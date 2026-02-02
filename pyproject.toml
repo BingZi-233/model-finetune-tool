@@ -2,7 +2,7 @@
 name = "model-finetune-tool"
 version = "0.1.0"
 description = "方便的大模型微调工具"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 dependencies = [
     "pydantic>=2.0,<3.0",
     "pyyaml>=6.0,<7.0",
