@@ -38,7 +38,7 @@ class LLMClient:
         # 强制使用最高品质配置
         self.model = model or config.llm.model
         self.temperature = 0.2  # 降低随机性，提高质量
-        self.max_tokens = 4096  # 允许更长更详细的回答
+        self.max_tokens = None  # 不限制，让模型生成完整回答
         
         self.client = OpenAI(
             api_key=self.api_key,

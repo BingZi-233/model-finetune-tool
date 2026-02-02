@@ -8,7 +8,7 @@ llm:
   base_url: "https://api.openai.com/v1"
   model: "gpt-4o"  # 最高品质
   temperature: 0.3  # 较低温度，更稳定
-  max_tokens: 4096  # 更长输出
+  # max_tokens: 不限制，让模型生成完整回答
 
 # 数据库配置（SQLite为默认）
 database:
