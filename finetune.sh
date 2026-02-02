@@ -192,9 +192,8 @@ create_dirs() {
     mkdir -p "${SCRIPT_DIR}/output"
     mkdir -p "${SCRIPT_DIR}/checkpoints"
     
-    # 创建 .gitkeep 以保留目录
+    # 创建 .gitkeep 以保留目录（注意：documents目录不创建，避免解析时出现问题）
     touch "${SCRIPT_DIR}/data/.gitkeep"
-    touch "${SCRIPT_DIR}/documents/.gitkeep"
     touch "${SCRIPT_DIR}/output/.gitkeep"
     touch "${SCRIPT_DIR}/checkpoints/.gitkeep"
     
