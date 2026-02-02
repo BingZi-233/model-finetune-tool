@@ -295,6 +295,13 @@ def parse(
     # 获取全局配置路径
     config_path = ctx.obj.get('config', 'config.yaml')
     
+    click.echo("=" * 60)
+    click.echo("🚀 开始解析文档并生成数据集")
+    click.echo("=" * 60)
+    click.echo(f"📁 输入目录: {input_dir}")
+    click.echo(f"📊 数据集名称: {dataset_name}")
+    click.echo(f"🔄 递归扫描: {'是' if recursive else '否'}")
+    
     # 验证参数
     if chunk_size is not None:
         if chunk_size < 100 or chunk_size > 10000:
@@ -332,13 +339,18 @@ def parse(
     if chunk_size:
         cfg.datasets.chunk_size = chunk_size
     
+    click.echo(f"📏 文本块大小: {cfg.datasets.chunk_size}")
+    click.echo(f"❓ 每个文本块生成QA对数量: {qa_pairs}")
+    click.echo(f"🤖 LLM模型: {cfg.llm.model}")
+    click.echo("-" * 60)
+    
     # 初始化管理器
     parser = ParserManager()
     db_manager = DatasetManager()
     llm_client = LLMClient()
     
     # 解析文档
-    click.echo(f"📂 解析文档: {input_dir}")
+    click.echo(f"📂 开始扫描文档目录...")
     
     try:
         documents = parser.parse_directory(input_dir, recursive)
@@ -351,12 +363,22 @@ def parse(
         click.echo("⚠️ 没有找到可解析的文档")
         return
     
-    click.echo(f"📄 找到 {len(documents)} 个文档")
+    click.echo("-" * 60)
+    click.echo(f"✅ 扫描完成! 发现 {len(documents)} 个有效文档")
+    
+    # 统计总段落数
+    total_paragraphs = sum(len(paras) for paras in documents.values())
+    click.echo(f"📝 总段落数: {total_paragraphs}")
     
     # 处理每个文档
     total_items = 0
     skipped_files = 0
     error_files = []
+    total_chunks = 0
+    
+    click.echo("-" * 60)
+    click.echo("🔄 开始生成QA对...")
+    click.echo("-" * 60)
     
     for file_path, paragraphs in tqdm(documents.items(), desc="🔄 处理文档"):
         # 验证文件大小
@@ -389,6 +411,9 @@ def parse(
             else:
                 if len(para) > MIN_CHUNK_LENGTH:  # 使用常量
                     chunks.append(para)
+        
+        total_chunks += len(chunks)
+        click.echo(f"📄 [{Path(file_path).name}] {len(paragraphs)} 段落 → {len(chunks)} 文本块")
         
         # 生成QA对
         for chunk_idx, chunk in enumerate(chunks):
@@ -431,12 +456,17 @@ def parse(
                 logger.error(f"生成QA失败: {e}")
                 continue
     
-    # 输出统计
-    click.echo(f"✅ 完成！共生成 {total_items} 条数据")
-    if skipped_files > 0:
-        click.echo(f"📌 跳过 {skipped_files} 个已处理的文档")
+    click.echo("-" * 60)
+    click.echo("📊 处理完成! 统计信息:")
+    click.echo("=" * 60)
+    click.echo(f"✅ 成功处理文档: {len(documents) - skipped_files - len(error_files)}")
+    click.echo(f"📌 跳过已处理文档: {skipped_files}")
     if error_files:
-        click.echo(f"❌ {len(error_files)} 个文档处理失败")
+        click.echo(f"❌ 处理失败文档: {len(error_files)}")
+    click.echo(f"📦 总文本块数: {total_chunks}")
+    click.echo(f"🎯 生成QA对总数: {total_items}")
+    click.echo(f"📁 数据集: {dataset_name}")
+    click.echo("=" * 60)
 
 
 @cli.command()
