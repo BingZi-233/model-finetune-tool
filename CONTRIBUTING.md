@@ -44,7 +44,7 @@
 1. Fork 本仓库
 2. 克隆到本地：
    ```bash
-   git clone https://github.com/YOUR_USERNAME/model-finetune-tool.git
+   git clone https://github.com/BingZi-233/model-finetune-tool.git
    cd model-finetune-tool
    ```
 
@@ -82,7 +82,7 @@
 
 ```bash
 # 克隆项目
-git clone https://github.com/yourname/model-finetune-tool.git
+git clone https://github.com/BingZi-233/model-finetune-tool.git
 cd model-finetune-tool
 
 # 创建虚拟环境
@@ -284,7 +284,7 @@ pytest tests/ --cov=src
 
 ## 联系方式
 
-- Issue: https://github.com/yourname/model-finetune-tool/issues
+- Issue: https://github.com/BingZi-233/model-finetune-tool/issues
 - 邮箱: maintainer@example.com
 
 感谢您的贡献！🌹

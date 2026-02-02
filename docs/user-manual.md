@@ -20,7 +20,7 @@
 
 ```bash
 # 1. 克隆并安装
-git clone https://github.com/yourname/model-finetune-tool.git
+git clone https://github.com/BingZi-233/model-finetune-tool.git
 cd model-finetune-tool
 pip install -e .
 
@@ -90,7 +90,7 @@ nvidia-smi
 
 ```bash
 # 克隆仓库
-git clone https://github.com/yourname/model-finetune-tool.git
+git clone https://github.com/BingZi-233/model-finetune-tool.git
 cd model-finetune-tool
 ```
 
@@ -658,7 +658,7 @@ rm -rf ./output/*/checkpoints/*
 
 ### C. 相关资源
 
-- [项目仓库](https://github.com/yourname/model-finetune-tool)
+- [项目仓库](https://github.com/BingZi-233/model-finetune-tool)
 - [HuggingFace Hub](https://huggingface.co/models)
 - [OpenAI API文档](https://platform.openai.com/docs)
 - [LoRA论文](https://arxiv.org/abs/2106.09685)

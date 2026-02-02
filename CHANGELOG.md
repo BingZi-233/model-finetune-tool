@@ -94,5 +94,5 @@
 
 ## 联系方式
 
-- 项目仓库: https://github.com/yourname/model-finetune-tool
-- 问题反馈: https://github.com/yourname/model-finetune-tool/issues
+- 项目仓库: https://github.com/BingZi-233/model-finetune-tool
+- 问题反馈: https://github.com/BingZi-233/model-finetune-tool/issues

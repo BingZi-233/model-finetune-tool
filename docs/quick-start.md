@@ -26,7 +26,7 @@
 
 ```bash
 # 克隆项目
-git clone https://github.com/yourname/model-finetune-tool.git
+git clone https://github.com/BingZi-233/model-finetune-tool.git
 cd model-finetune-tool
 ```
 

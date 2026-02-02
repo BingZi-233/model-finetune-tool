@@ -59,7 +59,7 @@ git --version
 #### 方式一：从 Git 克隆
 
 ```cmd
-git clone https://github.com/yourname/model-finetune-tool.git
+git clone https://github.com/BingZi-233/model-finetune-tool.git
 cd model-finetune-tool
 ```
 
