@@ -80,23 +80,37 @@ class LLMClient:
         messages: List[Dict[str, str]],
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
+        json_mode: bool = False,
         **kwargs
     ) -> str:
         """
         发送对话请求
         
         使用较低温度确保输出质量稳定
+        
+        Args:
+            messages: 消息列表
+            temperature: 温度参数
+            max_tokens: 最大token数
+            json_mode: 是否强制JSON格式响应
+            **kwargs: 其他参数
         """
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            temperature=temperature or self.temperature,
-            max_tokens=max_tokens or self.max_tokens,
-            # 高质量参数
-            presence_penalty=0.1,
-            frequency_penalty=0.1,
+        # 构建请求参数
+        request_params = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": temperature or self.temperature,
+            "max_tokens": max_tokens or self.max_tokens,
+            "presence_penalty": 0.1,
+            "frequency_penalty": 0.1,
             **kwargs
-        )
+        }
+        
+        # 如果需要JSON响应，添加response_format
+        if json_mode:
+            request_params["response_format"] = {"type": "json_object"}
+        
+        response = self.client.chat.completions.create(**request_params)
         
         return response.choices[0].message.content
     
@@ -214,7 +228,7 @@ class LLMClient:
                 response = self.chat([
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
-                ])
+                ], json_mode=True)
                 
                 logger.info(f"LLM响应长度: {len(response)} 字符")
                 
@@ -362,15 +376,23 @@ class LLMClient:
 要求：
 1. 保留关键信息和核心观点
 2. 逻辑清晰，结构完整
-3. 字数适中（200-500字）"""
+3. 字数适中（200-500字）
+
+请直接输出JSON格式，包含summary字段："""
             },
             {
                 "role": "user",
                 "content": f"请为以下文本生成摘要：\n\n{text}"
             }
-        ])
+        ], json_mode=True)
         
-        return response.strip()
+        # 提取JSON中的summary字段
+        try:
+            import json
+            response_data = json.loads(response)
+            return response_data.get("summary", response).strip()
+        except json.JSONDecodeError:
+            return response.strip()
     
     def generate_conversation(
         self,
@@ -405,7 +427,7 @@ class LLMClient:
         response = self.chat([
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"基于以下内容生成对话：\n\n{text}"}
-        ])
+        ], json_mode=True)
         
         try:
             return self._extract_json(response)
