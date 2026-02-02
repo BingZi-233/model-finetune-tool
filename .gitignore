@@ -159,7 +159,26 @@ temp/
 .DS_Store
 .DS_Store?
 ._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
+.Spotlight-V
+
+100
+.Trashes# Windows
 Thumbs.db
+Thumbs.db:encryptable
+Desktop.ini
+$RECYCLE.BIN/
+System Volume Information/
+*.lnk
+*.url
+*.local
+
+# Project specific
+data/*
+!data/.gitkeep
+output/**
+checkpoints/**
+*.db
+*.log
+*.pth
+*.safetensors
+*.h5

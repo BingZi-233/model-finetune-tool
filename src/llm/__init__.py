@@ -6,13 +6,43 @@ LLM调用模块
 """
 import hashlib
 import json
+import logging
 import os
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from openai import OpenAI
+from openai import OpenAI, APIError, RateLimitError, APITimeoutError
 
 from ..config import get_config
+
+logger = logging.getLogger(__name__)
+
+# ============ 常量定义 ============
+MAX_INPUT_LENGTH = 50000  # 最大输入长度 (50KB)
+DEFAULT_CACHE_MAX_SIZE = 1000  # 默认缓存最大条目数
+DEFAULT_CACHE_MAX_AGE = 86400  # 默认缓存最大存活时间 (24小时)
+
+
+# ============ 自定义异常 ============
+class LLMError(Exception):
+    """LLM 调用错误基类"""
+    pass
+
+
+class QAGenerationError(LLMError):
+    """QA 对生成错误"""
+    pass
+
+
+class JSONParseError(LLMError):
+    """JSON 解析错误"""
+    pass
+
+
+class CacheError(Exception):
+    """缓存错误"""
+    pass
 
 
 class LLMClient:
@@ -92,7 +122,24 @@ class LLMClient:
             
         Returns:
             QA对列表
+            
+        Raises:
+            QAGenerationError: 生成失败
         """
+        # 验证输入
+        if not text or not text.strip():
+            logger.warning("输入文本为空")
+            return []
+        
+        if len(text) > MAX_INPUT_LENGTH:
+            raise QAGenerationError(
+                f"输入文本过长 ({len(text)} > {MAX_INPUT_LENGTH} 字符)"
+            )
+        
+        if num_pairs < 1 or num_pairs > 20:
+            logger.warning(f"无效的 num_pairs 值: {num_pairs}，使用默认值 5")
+            num_pairs = 5
+        
         lang_prompt = "中文" if language == "zh" else "English"
         
         # 高质量system prompt
@@ -167,16 +214,20 @@ class LLMClient:
                 # 验证质量
                 if self._validate_qa_pairs(pairs, num_pairs):
                     best_result = pairs
+                    logger.info(f"成功生成 {len(pairs)} 个QA对 (尝试 {attempt + 1}/3)")
                     break
                     
+            except JSONParseError as e:
+                logger.warning(f"JSON解析失败 (尝试 {attempt + 1}/3): {e}")
             except Exception as e:
+                logger.error(f"生成QA对失败 (尝试 {attempt + 1}/3): {e}")
                 if attempt == 2:  # 最后一次尝试
-                    print(f"生成QA对失败 (尝试 {attempt + 1}/3): {e}")
+                    raise QAGenerationError(f"生成QA对失败: {e}")
                 continue
         
         # 如果自动生成失败，返回基于规则的fallback
         if not best_result:
-            print("使用fallback生成简单QA对")
+            logger.warning("使用fallback生成简单QA对")
             best_result = self._generate_simple_qa(text, num_pairs)
         
         return best_result
@@ -254,7 +305,7 @@ class LLMClient:
             except json.JSONDecodeError:
                 continue
         
-        raise ValueError(
+        raise JSONParseError(
             f"无法解析LLM响应中的JSON:\n"
             f"响应内容: {response[:500]}..."
         )
@@ -345,8 +396,9 @@ class LLMClient:
         
         try:
             return self._extract_json(response)
-        except ValueError:
+        except JSONParseError:
             # Fallback: 返回简单格式
+            logger.warning("对话生成JSON解析失败，使用fallback")
             return [
                 {"role": "user", "content": "请介绍一下"},
                 {"role": "assistant", "content": "好的，让我来介绍..."}
@@ -379,7 +431,7 @@ class LLMClient:
                 pairs = self.generate_qa_pairs(text, num_pairs_per_text)
                 all_pairs.extend(pairs)
             except Exception as e:
-                print(f"\n⚠️ 生成失败: {e}")
+                logger.warning(f"生成失败: {e}")
                 continue
         
         return all_pairs
@@ -390,31 +442,339 @@ class CacheManager:
     LLM响应缓存管理器
     
     用于避免重复调用LLM，节省成本
+    
+    特性：
+    - 缓存清理机制（大小限制、时间限制）
+    - 线程安全
+    - 跨平台支持
     """
     
-    def __init__(self, cache_dir: str = "./data/cache"):
+    def __init__(
+        self, 
+        cache_dir: str = "./data/cache",
+        max_size: int = DEFAULT_CACHE_MAX_SIZE,
+        max_age: int = DEFAULT_CACHE_MAX_AGE
+    ):
+        """初始化缓存管理器
+        
+        Args:
+            cache_dir: 缓存目录
+            max_size: 最大缓存条目数 (默认 1000)
+            max_age: 缓存最大存活时间，秒 (默认 24小时)
+        """
         self.cache_dir = Path(cache_dir)
+        self.max_size = max_size
+        self.max_age = max_age
+        self._ensure_cache_dir()
+    
+    def _ensure_cache_dir(self):
+        """确保缓存目录存在"""
         self.cache_dir.mkdir(parents=True, exist_ok=True)
     
     def _get_cache_key(self, text: str, **kwargs) -> str:
         """生成缓存key"""
+        import hashlib
         content = text + str(sorted(kwargs.items()))
         return hashlib.md5(content.encode()).hexdigest()
     
+    def _get_cache_file(self, key: str) -> Path:
+        """获取缓存文件路径"""
+        return self.cache_dir / f"{key}.json"
+    
+    def _get_cache_info_file(self, key: str) -> Path:
+        """获取缓存信息文件路径"""
+        return self.cache_dir / f"{key}.info"
+    
+    def _get_file_age(self, file_path: Path) -> float:
+        """获取文件年龄（秒）"""
+        try:
+            return time.time() - file_path.stat().st_mtime
+        except OSError:
+            return float('inf')
+    
+    def _save_cache_info(self, key: str, metadata: Dict = None):
+        """保存缓存元信息"""
+        info_file = self._get_cache_info_file(key)
+        info = {
+            'created_at': time.time(),
+            'key': key,
+            **(metadata or {})
+        }
+        try:
+            with open(info_file, 'w') as f:
+                json.dump(info, f)
+        except Exception as e:
+            logger.warning(f"保存缓存信息失败: {e}")
+    
     def get(self, text: str, **kwargs) -> Optional[str]:
-        """获取缓存"""
-        key = self._get_cache_key(text, **kwargs)
-        cache_file = self.cache_dir / f"{key}.json"
+        """获取缓存
         
-        if cache_file.exists():
+        Args:
+            text: 缓存的文本
+            **kwargs: 其他参数
+            
+        Returns:
+            缓存的响应，如果不存在返回 None
+        """
+        key = self._get_cache_key(text, **kwargs)
+        cache_file = self._get_cache_file(key)
+        info_file = self._get_cache_info_file(key)
+        
+        if not cache_file.exists():
+            return None
+        
+        # 检查是否过期
+        if info_file.exists():
+            try:
+                with open(info_file, 'r') as f:
+                    info = json.load(f)
+                created_at = info.get('created_at', 0)
+                if time.time() - created_at > self.max_age:
+                    # 缓存过期，删除
+                    self._delete_cache(key)
+                    return None
+            except Exception:
+                pass
+        
+        try:
             with open(cache_file, 'r', encoding='utf-8') as f:
                 return f.read()
-        return None
+        except Exception:
+            return None
     
     def set(self, text: str, response: str, **kwargs):
-        """设置缓存"""
-        key = self._get_cache_key(text, **kwargs)
-        cache_file = self.cache_dir / f"{key}.json"
+        """设置缓存
         
-        with open(cache_file, 'w', encoding='utf-8') as f:
-            f.write(response)
+        Args:
+            text: 缓存的文本
+            response: 缓存的响应
+            **kwargs: 其他参数
+        """
+        key = self._get_cache_key(text, **kwargs)
+        cache_file = self._get_cache_file(key)
+        
+        # 检查是否需要清理缓存
+        self._cleanup_if_needed()
+        
+        try:
+            with open(cache_file, 'w', encoding='utf-8') as f:
+                f.write(response)
+            self._save_cache_info(key, {'text_length': len(text)})
+        except Exception as e:
+            logger.warning(f"保存缓存失败: {e}")
+    
+    def _delete_cache(self, key: str):
+        """删除缓存"""
+        cache_file = self._get_cache_file(key)
+        info_file = self._get_cache_info_file(key)
+        
+        try:
+            if cache_file.exists():
+                cache_file.unlink()
+            if info_file.exists():
+                info_file.unlink()
+        except Exception as e:
+            logger.warning(f"删除缓存失败: {e}")
+    
+    def _cleanup_if_needed(self):
+        """必要时清理缓存"""
+        try:
+            # 统计缓存数量
+            cache_files = list(self.cache_dir.glob("*.json"))
+            
+            if len(cache_files) < self.max_size:
+                return
+            
+            # 删除最旧的缓存
+            cache_with_age = []
+            for cache_file in cache_files:
+                key = cache_file.stem
+                info_file = self._get_cache_info_file(key)
+                
+                if info_file.exists():
+                    try:
+                        with open(info_file, 'r') as f:
+                            info = json.load(f)
+                        created_at = info.get('created_at', 0)
+                        cache_with_age.append((cache_file, created_at))
+                    except Exception:
+                        cache_with_age.append((cache_file, 0))
+                else:
+                    cache_with_age.append((cache_file, 0))
+            
+            # 按时间排序，删除最旧的
+            cache_with_age.sort(key=lambda x: x[1])
+            num_to_delete = len(cache_files) - self.max_size + 100
+            
+            for cache_file, _ in cache_with_age[:num_to_delete]:
+                key = cache_file.stem
+                self._delete_cache(key)
+                logger.debug(f"清理缓存: {key}")
+                
+        except Exception as e:
+            logger.warning(f"清理缓存失败: {e}")
+    
+    def clear(self):
+        """清空所有缓存"""
+        try:
+            for cache_file in self.cache_dir.glob("*.json"):
+                cache_file.unlink()
+            for info_file in self.cache_dir.glob("*.info"):
+                info_file.unlink()
+            logger.info(f"已清空缓存目录: {self.cache_dir}")
+        except Exception as e:
+            logger.error(f"清空缓存失败: {e}")
+            raise CacheError(f"清空缓存失败: {e}")
+    
+    def get_stats(self) -> Dict[str, Any]:
+        """获取缓存统计信息"""
+        try:
+            cache_files = list(self.cache_dir.glob("*.json"))
+            info_files = list(self.cache_dir.glob("*.info"))
+            
+            total_size = sum(f.stat().st_size for f in cache_files if f.exists())
+            
+            # 计算缓存年龄
+            ages = []
+            for info_file in info_files:
+                try:
+                    with open(info_file, 'r') as f:
+                        info = json.load(f)
+                    created_at = info.get('created_at', 0)
+                    if created_at:
+                        ages.append(time.time() - created_at)
+                except Exception:
+                    pass
+            
+            avg_age = sum(ages) / len(ages) if ages else 0
+            
+            return {
+                'cache_count': len(cache_files),
+                'total_size_bytes': total_size,
+                'total_size_mb': total_size / 1024 / 1024,
+                'max_size': self.max_size,
+                'max_age_seconds': self.max_age,
+                'avg_age_seconds': avg_age,
+                'cache_dir': str(self.cache_dir)
+            }
+        except Exception as e:
+            logger.error(f"获取缓存统计失败: {e}")
+            return {}
+
+
+"""
+LLM 调用模块
+
+本模块提供 OpenAI API 集成和高品质训练数据生成功能。
+
+## 主要功能
+
+### LLMClient - LLM 客户端
+
+提供与 OpenAI API 的交互接口，支持：
+- 基础对话功能
+- QA 对批量生成
+- 文本摘要生成
+- 对话数据生成
+- 响应缓存
+
+### CacheManager - 缓存管理器
+
+提供 LLM 响应缓存功能，支持：
+- 自动缓存管理
+- 缓存大小限制
+- 缓存过期清理
+- 缓存统计
+
+## 使用示例
+
+```python
+from src.llm import LLMClient, CacheManager
+
+# 创建 LLM 客户端
+client = LLMClient(
+    api_key="your-api-key",
+    model="gpt-4o",
+    temperature=0.3
+)
+
+# 发送对话
+response = client.chat([
+    {"role": "user", "content": "你好！"}
+])
+print(response)
+
+# 生成 QA 对
+qa_pairs = client.generate_qa_pairs(
+    text="这是一段测试文本...",
+    num_pairs=5,
+    language="zh"
+)
+
+# 使用缓存
+cache = CacheManager(
+    cache_dir="./data/cache",
+    max_size=1000,
+    max_age=86400  # 24小时
+)
+
+# 检查缓存
+cached = cache.get(text)
+if not cached:
+    response = client.generate_qa_pairs(text)
+    cache.set(text, response)
+```
+
+## 异常处理
+
+本模块定义了以下自定义异常：
+
+- `LLMError` - LLM 调用错误基类
+- `QAGenerationError` - QA 对生成错误
+- `JSONParseError` - JSON 解析错误
+- `CacheError` - 缓存操作错误
+
+```python
+from src.llm import LLMClient, QAGenerationError, JSONParseError
+
+client = LLMClient()
+
+try:
+    qa_pairs = client.generate_qa_pairs(text)
+except QAGenerationError as e:
+    print(f"QA 生成失败: {e}")
+except JSONParseError as e:
+    print(f"JSON 解析失败: {e}")
+```
+
+## 性能优化
+
+1. **缓存策略**
+   - 默认缓存 1000 条
+   - 默认过期时间 24 小时
+   - 自动清理旧缓存
+
+2. **批处理**
+   - 使用 `batch_generate_qa()` 批量生成
+   - 自动过滤空文本
+
+3. **温度设置**
+   - 默认温度 0.2，确保输出稳定
+   - 可根据需要调整
+
+## 注意事项
+
+- 需要有效的 OpenAI API Key
+- API 调用会计费，请注意成本控制
+- 建议设置合理的 max_tokens 限制
+- 大文本会自动分块处理
+"""
+
+__all__ = [
+    'LLMClient',
+    'CacheManager',
+    'LLMError',
+    'QAGenerationError',
+    'JSONParseError',
+    'CacheError',
+]

@@ -1,0 +1,70 @@
+# Pre-commit hooks 配置
+# 安装方法: pip install pre-commit && pre-commit install
+
+repos:
+  # 检查 Python 语法错误
+  - repo: https://github.com/PyCQA/pycodestyle
+    rev: 2.11.1
+    hooks:
+      - id: pycodestyle
+        name: Check Python code style
+        entry: pycodestyle
+        types: [python]
+        args: [--max-line-length=100, --ignore=E501,W503]
+
+  # 检查 docstring 格式
+  - repo: https://github.com/PyCQA/pydocstyle
+    rev: 6.3.0
+    hooks:
+      - id: pydocstyle
+        name: Check docstring style
+        types: [python]
+        args: [--match='.*\.py$']
+
+  # 自动修复常见问题
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+        name: Remove trailing whitespace
+        types: [python, markdown, yaml, json]
+
+      - id: end-of-file-fixer
+        name: Ensure files end with newline
+        types: [python, markdown, yaml, json]
+
+      - id: check-yaml
+        name: Check YAML syntax
+        types: [yaml]
+
+      - id: check-json
+        name: Check JSON syntax
+        types: [json]
+
+      - id: check-added-large-files
+        name: Prevent large files
+        args: ['--maxkb=1000']
+
+  # 检查类型注解
+  - repo: https://github.com/pre-commit/pyright
+    rev: v1.1.100
+    hooks:
+      - id: pyright
+        name: Type checking with pyright
+        types: [python]
+        additional_dependencies:
+          - pydantic>=2.0
+
+  # 检测 TODO/FIXME
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-merge-conflict
+        name: Check for merge conflict markers
+
+# 自定义配置
+default_stages: [pre-commit]
+
+fail_fast: false
+
+verbose: true

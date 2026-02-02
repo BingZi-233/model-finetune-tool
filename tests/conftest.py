@@ -2,7 +2,32 @@
 Pytest配置文件和共享夹具
 
 本模块定义测试中使用的共享夹具和配置。
+
+## 夹具列表
+
+| 夹具名 | 作用域 | 描述 |
+|--------|--------|------|
+| temp_dir | session | 临时目录（自动清理） |
+| sample_documents_dir | function | 测试文档目录 |
+| sample_dataset_jsonl | function | 测试数据集文件 |
+| mock_llm_response | function | 模拟 LLM 响应 |
+| clean_config | function | 清洁配置环境 |
+| env_vars | function | 测试环境变量 |
+
+## 运行测试
+
+```bash
+# 运行所有测试
+pytest tests/ -v
+
+# 运行特定夹具的测试
+pytest tests/ -v -k "sample"
+
+# 查看夹具
+pytest tests/ --fixtures
+```
 """
+
 import os
 import tempfile
 from pathlib import Path
