@@ -288,19 +288,23 @@ class LLMClient:
         从响应中提取JSON
         
         尝试多种方式提取：
-        1. 直接解析
+        1. 清理markdown标记后解析
         2. 从代码块中提取
         3. 查找JSON数组
         """
         import re
         
-        # 方式1: 直接解析
+        # 首先清理markdown代码块标记（处理不完整的代码块）
+        cleaned = re.sub(r'^```(?:json)?\s*', '', response.strip())
+        cleaned = re.sub(r'\s*```\s*$', '', cleaned)
+        
+        # 方式1: 解析清理后的内容
         try:
-            return json.loads(response)
+            return json.loads(cleaned)
         except json.JSONDecodeError:
             pass
         
-        # 方式2: 从代码块中提取
+        # 方式2: 从原始响应中提取代码块
         json_match = re.search(
             r'```(?:json)?\s*([\s\S]*?)\s*```', 
             response
