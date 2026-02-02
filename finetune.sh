@@ -87,7 +87,7 @@ setup_dependencies() {
     # 检查依赖是否安装
     if ! python -c "import click" 2>/dev/null; then
         print_info "安装项目依赖..."
-        pip install -e . --quiet
+        pip install . --quiet
         
         if [ $? -eq 0 ]; then
             print_success "依赖安装成功"

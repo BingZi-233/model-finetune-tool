@@ -91,7 +91,7 @@ REM 检查依赖
 %PYTHON_CMD% -c "import click" 2>nul
 if not %errorlevel% equ 0 (
     call :print_info "安装项目依赖..."
-    pip install -e . --quiet
+    pip install . --quiet
     if %errorlevel% equ 0 (
         call :print_success "依赖安装成功"
     ) else (
