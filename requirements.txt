@@ -1,0 +1,27 @@
+# model-finetune-tool 依赖文件
+# 使用 uv 管理: uv sync
+# 或 pip: pip install -r requirements.txt
+
+# 核心依赖
+pydantic>=2.0
+pyyaml>=6.0
+openai>=1.0
+python-docx>=1.0
+pymupdf>=1.23
+markdown>=3.5
+sqlalchemy>=2.0
+pymysql>=1.1
+psycopg2-binary>=2.9
+python-dotenv>=1.0
+tqdm>=4.66
+click>=8.0
+
+# 开发依赖
+pytest>=8.0
+
+# 可选依赖 (用于训练)
+# transformers>=4.0
+# datasets>=2.0
+# peft>=0.4.0
+# accelerate>=0.20.0
+# bitsandbytes>=0.41.0

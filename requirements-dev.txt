@@ -1,0 +1,14 @@
+# 开发依赖
+pytest>=8.0
+pytest-cov>=4.0
+pytest-mock>=3.10
+
+# 代码质量
+black>=23.0
+isort>=5.12
+flake8>=6.0
+mypy>=1.0
+
+# 类型检查
+types-pyyaml>=6.0
+types-requests>=2.0
