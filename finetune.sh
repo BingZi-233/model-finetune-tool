@@ -169,16 +169,23 @@ EOF
 # 检查 GPU
 check_gpu() {
     print_info "检查 GPU 可用性..."
-    
+
     # 尝试导入 torch
     if python -c "import torch" 2>/dev/null; then
+        # 检查 CUDA (NVIDIA GPU)
         if python -c "import torch; print(torch.cuda.is_available())" 2>/dev/null | grep -q "True"; then
             GPU_NAME=$(python -c "import torch; print(torch.cuda.get_device_name(0))" 2>/dev/null)
             print_success "检测到 GPU: ${GPU_NAME}"
             return 0
         fi
+
+        # 检查 MPS (Apple Silicon)
+        if python -c "import torch; print(hasattr(torch.backends, 'mps') and torch.backends.mps.is_available())" 2>/dev/null | grep -q "True"; then
+            print_success "检测到 GPU: Apple Silicon (MPS)"
+            return 0
+        fi
     fi
-    
+
     print_info "未检测到 GPU，将使用 CPU 训练（可能较慢）"
     return 0
 }

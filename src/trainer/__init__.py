@@ -1,4 +1,5 @@
 """训练模块"""
+
 import logging
 import os
 import platform
@@ -16,53 +17,51 @@ IS_WINDOWS = platform.system() == "Windows"
 # ============ GPU 检测 ============
 def check_gpu_available() -> Dict[str, bool]:
     """检查 GPU 可用性
-    
+
     Returns:
         Dict containing:
         - cuda: CUDA 是否可用
         - mps: Apple Silicon 是否可用
         - gpu_name: GPU 名称 (如果检测到)
     """
-    result = {
-        'cuda': False,
-        'mps': False,
-        'gpu_name': None
-    }
-    
+    result = {"cuda": False, "mps": False, "gpu_name": None}
+
     try:
         import torch
-        
+
         if torch.cuda.is_available():
-            result['cuda'] = True
-            result['gpu_name'] = torch.cuda.get_device_name(0)
+            result["cuda"] = True
+            result["gpu_name"] = torch.cuda.get_device_name(0)
             logger.info(f"检测到 CUDA GPU: {result['gpu_name']}")
-            logger.info(f"GPU 显存: {torch.cuda.get_device_properties(0).total_memory / 1024 / 1024 / 1024:.1f} GB")
-        
+            logger.info(
+                f"GPU 显存: {torch.cuda.get_device_properties(0).total_memory / 1024 / 1024 / 1024:.1f} GB"
+            )
+
         # 检查 Apple Silicon MPS
-        if hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
-            result['mps'] = True
-            result['gpu_name'] = "Apple Silicon"
+        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            result["mps"] = True
+            result["gpu_name"] = "Apple Silicon"
             logger.info("检测到 Apple Silicon MPS")
-            
+
     except ImportError:
         logger.warning("PyTorch 未安装，无法检测 GPU")
     except Exception as e:
         logger.warning(f"GPU 检测失败: {e}")
-    
+
     return result
 
 
 def get_device_map() -> str:
     """获取最佳设备映射
-    
+
     Returns:
         设备字符串: "cuda", "mps", 或 "auto"
     """
     gpu_info = check_gpu_available()
-    
-    if gpu_info['cuda']:
+
+    if gpu_info["cuda"]:
         return "cuda"
-    elif gpu_info['mps']:
+    elif gpu_info["mps"]:
         return "mps"
     else:
         logger.info("未检测到 GPU，将使用 CPU 训练（可能较慢）")
@@ -70,19 +69,17 @@ def get_device_map() -> str:
 
 
 def prepare_training_data(
-    dataset_path: str,
-    output_path: str,
-    chat_template: bool = True
+    dataset_path: str, output_path: str, chat_template: bool = True
 ) -> str:
     """准备训练数据"""
     import json
-    
+
     config = get_config()
-    
+
     # 读取数据
-    with open(dataset_path, 'r', encoding='utf-8') as f:
+    with open(dataset_path, "r", encoding="utf-8") as f:
         data = [json.loads(line) for line in f]
-    
+
     # 格式化
     formatted_data = []
     for item in data:
@@ -90,7 +87,7 @@ def prepare_training_data(
             formatted = {
                 "messages": [
                     {"role": "user", "content": item.get("instruction", "")},
-                    {"role": "assistant", "content": item.get("output", "")}
+                    {"role": "assistant", "content": item.get("output", "")},
                 ]
             }
         else:
@@ -98,13 +95,13 @@ def prepare_training_data(
                 "text": f"### Instruction: {item.get('instruction', '')}\n### Response: {item.get('output', '')}"
             }
         formatted_data.append(formatted)
-    
+
     # 保存
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, 'w', encoding='utf-8') as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         for item in formatted_data:
-            f.write(json.dumps(item, ensure_ascii=False) + '\n')
-    
+            f.write(json.dumps(item, ensure_ascii=False) + "\n")
+
     return output_path
 
 
@@ -117,10 +114,10 @@ def train_lora(
     learning_rate: float = 0.0002,
     epochs: int = 3,
     max_length: int = 2048,
-    resume_from: Optional[str] = None
+    resume_from: Optional[str] = None,
 ):
     """训练LoRA模型
-    
+
     Args:
         model_name: 模型名称
         data_path: 训练数据路径
@@ -132,28 +129,31 @@ def train_lora(
         max_length: 最大序列长度
         resume_from: 从检查点恢复的路径
     """
-    from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer
+    from transformers import (
+        AutoModelForCausalLM,
+        AutoTokenizer,
+        TrainingArguments,
+        Trainer,
+    )
     from datasets import load_dataset
     from peft import LoraConfig, TaskType, get_peft_model
-    
+
     config = get_config()
     lora_config = lora_config or config.training.lora.model_dump()
-    
+
     # 检测 GPU
     gpu_info = check_gpu_available()
     device_map = get_device_map()
-    
+
     # 加载模型
     logger.info(f"加载模型: {model_name}")
     logger.info(f"使用设备: {device_map}")
-    
+
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        torch_dtype="auto",
-        device_map=device_map
+        model_name, torch_dtype="auto", device_map=device_map
     )
-    
+
     # 配置LoRA
     peft_config = LoraConfig(
         task_type=TaskType.CAUSAL_LM,
@@ -161,38 +161,37 @@ def train_lora(
         r=lora_config.get("r", 8),
         lora_alpha=lora_config.get("alpha", 16),
         lora_dropout=lora_config.get("dropout", 0.1),
-        target_modules=lora_config.get("target_modules", ["q_proj", "k_proj", "v_proj", "o_proj"])
+        target_modules=lora_config.get(
+            "target_modules", ["q_proj", "k_proj", "v_proj", "o_proj"]
+        ),
     )
-    
+
     model = get_peft_model(model, peft_config)
     model.print_trainable_parameters()
-    
+
     # 加载数据
     dataset = load_dataset("json", data_files=data_path, split="train")
-    
+
     # 数据预处理
     def tokenize_function(examples):
         texts = []
         for msg in examples.get("messages", []):
             text = tokenizer.apply_chat_template(msg, tokenize=False)
             texts.append(text)
-        
+
         return tokenizer(
-            texts,
-            truncation=True,
-            max_length=max_length,
-            padding="max_length"
+            texts, truncation=True, max_length=max_length, padding="max_length"
         )
-    
+
     dataset = dataset.map(tokenize_function, batched=True)
-    
+
     # 训练参数
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # 检查点目录
     checkpoint_dir = output_dir / "checkpoints"
-    
+
     training_args = TrainingArguments(
         output_dir=str(checkpoint_dir),
         num_train_epochs=epochs,
@@ -203,64 +202,53 @@ def train_lora(
         save_total_limit=3,
         logging_steps=10,
         report_to="none",
-        fp16=gpu_info['cuda'],  # 仅在 CUDA 上启用 fp16
+        fp16=gpu_info["cuda"],  # 仅在 CUDA 上启用 fp16
         optim="paged_adamw_8bit",
-        load_best_model_at_end=True,
-        metric_for_best_model="loss",
-        greater_is_better=False,
-        resume_from_checkpoint=resume_from
+        load_best_model_at_end=False,
+        resume_from_checkpoint=resume_from,
     )
-    
+
     # 训练
     logger.info("开始训练...")
     trainer = Trainer(
-        model=model,
-        args=training_args,
-        train_dataset=dataset,
-        tokenizer=tokenizer
+        model=model, args=training_args, train_dataset=dataset, tokenizer=tokenizer
     )
-    
+
     trainer.train()
-    
+
     # 保存模型
     model.save_pretrained(str(output_dir / "lora_model"))
     tokenizer.save_pretrained(str(output_dir / "lora_model"))
-    
+
     logger.info(f"模型已保存到: {output_dir / 'lora_model'}")
-    
+
     return str(output_dir / "lora_model")
 
 
-def merge_model(
-    base_model_path: str,
-    lora_model_path: str,
-    output_path: str
-):
+def merge_model(base_model_path: str, lora_model_path: str, output_path: str):
     """合并模型"""
     from peft import PeftModel
     from transformers import AutoModelForCausalLM, AutoTokenizer
-    
+
     logger.info(f"加载基础模型: {base_model_path}")
     base_model = AutoModelForCausalLM.from_pretrained(
-        base_model_path,
-        torch_dtype="auto",
-        device_map="auto"
+        base_model_path, torch_dtype="auto", device_map="auto"
     )
-    
+
     logger.info(f"加载LoRA: {lora_model_path}")
     model = PeftModel.from_pretrained(base_model, lora_model_path)
-    
+
     logger.info("合并模型...")
     merged_model = model.merge_and_unload()
-    
+
     logger.info(f"保存合并模型: {output_path}")
     merged_model.save_pretrained(output_path)
-    
+
     tokenizer = AutoTokenizer.from_pretrained(base_model_path)
     tokenizer.save_pretrained(output_path)
-    
+
     logger.info("模型合并完成！")
-    
+
     return output_path
 
 
@@ -391,9 +379,9 @@ output/
 """
 
 __all__ = [
-    'train_lora',
-    'merge_model',
-    'prepare_training_data',
-    'check_gpu_available',
-    'get_device_map',
+    "train_lora",
+    "merge_model",
+    "prepare_training_data",
+    "check_gpu_available",
+    "get_device_map",
 ]
