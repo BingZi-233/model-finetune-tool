@@ -176,6 +176,9 @@ class ParserManager:
         
         for file_path in files:
             if file_path.is_file():
+                # 忽略 .gitkeep 文件
+                if file_path.name == '.gitkeep':
+                    continue
                 try:
                     content = self.parse_file(str(file_path))
                     if content:
