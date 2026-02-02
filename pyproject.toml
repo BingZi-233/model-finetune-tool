@@ -1,24 +1,26 @@
-project = "model-finetune-tool"
-version = "0.1.0"
-description = "方便的大模型微调工具"
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "-x"
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning"
+]
 
-[tool.poetry.dependencies]
-python = "^3.10"
-pydantic = "^2.0"
-pyyaml = "^6.0"
-openai = "^1.0"
-python-docx = "^1.0"
-pymupdf = "^1.23"
-markdown = "^3.5"
-sqlalchemy = "^2.0"
-pymysql = "^1.1"
-psycopg2-binary = "^2.9"
-python-dotenv = "^1.0"
-tqdm = "^4.66"
+[tool.coverage.run]
+source = ["src"]
+omit = ["tests/*", "*/__pycache__/*"]
 
-[tool.poetry.scripts]
-finetune = "src.main:main"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError"
+]
