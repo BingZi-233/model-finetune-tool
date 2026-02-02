@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 from typing import Dict, Optional
 
-from .config import get_config
+from ..config import get_config
 
 
 def prepare_training_data(

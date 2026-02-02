@@ -2,11 +2,12 @@
 import hashlib
 import json
 import os
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from openai import OpenAI
 
-from .config import get_config
+from ..config import get_config
 
 
 class LLMClient:

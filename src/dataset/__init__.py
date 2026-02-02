@@ -10,7 +10,7 @@ from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, J
 from sqlalchemy.orm import sessionmaker, DeclarativeBase, Session
 from sqlalchemy.pool import StaticPool
 
-from .config import get_config
+from ..config import get_config
 
 
 class Base(DeclarativeBase):
@@ -29,8 +29,8 @@ class Document(Base):
     content_hash = Column(String(64), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    # 元数据
-    metadata = Column(JSON, nullable=True)
+    # 额外数据
+    extra_data = Column(JSON, nullable=True)
 
 
 class DatasetItem(Base):
@@ -42,14 +42,14 @@ class DatasetItem(Base):
     document_id = Column(Integer, nullable=True)
     
     instruction = Column(Text, nullable=False)
-    input = Column(Text, nullable=True)
+    input_ = Column(Text, nullable=True)
     output = Column(Text, nullable=True)
     
     chunk_index = Column(Integer, default=0)
     source_file = Column(String(500), nullable=True)
     
     created_at = Column(DateTime, default=datetime.utcnow)
-    metadata = Column(JSON, nullable=True)
+    extra_data = Column(JSON, nullable=True)
 
 
 class DatasetManager:
@@ -65,11 +65,19 @@ class DatasetManager:
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
         
         # 创建引擎
-        if db_path.endswith(".db") or "sqlite" in db_path:
+        if db_path == ":memory:":
+            # 内存数据库
+            self.engine = create_engine(
+                "sqlite:///:memory:",
+                poolclass=StaticPool,
+                connect_args={"check_same_thread": False}
+            )
+        elif db_path.endswith(".db") or "sqlite" in db_path:
             self.engine = create_engine(
                 f"sqlite:///{db_path}",
                 poolclass=StaticPool,
-                connect_args={"check_same_thread": False}
+                connect_args={"check_same_thread": False},
+                pool_pre_ping=True
             )
         elif "mysql" in db_path:
             self.engine = create_engine(db_path)
@@ -96,18 +104,32 @@ class DatasetManager:
         finally:
             session.close()
     
-    def add_document(self, file_path: str, content_hash: str, metadata: Optional[Dict] = None):
+    def add_document(self, file_path: str, content_hash: str, extra_data: Optional[Dict] = None):
         """添加文档记录"""
         with self.session() as session:
-            doc = Document(
-                file_path=file_path,
-                file_name=Path(file_path).name,
-                file_type=Path(file_path).suffix.lower(),
-                content_hash=content_hash,
-                metadata=metadata
-            )
-            session.merge(doc)  # 如果存在则更新
-            return doc.id
+            # 检查是否已存在
+            existing = session.query(Document).filter(
+                Document.file_path == file_path
+            ).first()
+            
+            if existing:
+                # 更新现有记录
+                existing.content_hash = content_hash
+                existing.extra_data = extra_data
+                session.flush()
+                return existing.id
+            else:
+                # 创建新记录
+                doc = Document(
+                    file_path=file_path,
+                    file_name=Path(file_path).name,
+                    file_type=Path(file_path).suffix.lower(),
+                    content_hash=content_hash,
+                    extra_data=extra_data
+                )
+                session.add(doc)
+                session.flush()
+                return doc.id
     
     def get_document(self, file_path: str) -> Optional[Document]:
         """获取文档记录"""
@@ -133,21 +155,22 @@ class DatasetManager:
         document_id: Optional[int] = None,
         chunk_index: int = 0,
         source_file: Optional[str] = None,
-        metadata: Optional[Dict] = None
+        extra_data: Optional[Dict] = None
     ):
         """添加数据集条目"""
         with self.session() as session:
             item = DatasetItem(
                 dataset_name=dataset_name,
                 instruction=instruction,
-                input=input_,
+                input_=input_,
                 output=output,
                 document_id=document_id,
                 chunk_index=chunk_index,
                 source_file=source_file,
-                metadata=metadata
+                extra_data=extra_data
             )
             session.add(item)
+            session.flush()
             return item.id
     
     def get_dataset_items(
@@ -172,16 +195,20 @@ class DatasetManager:
     
     def export_dataset(self, dataset_name: str) -> List[Dict[str, Any]]:
         """导出数据集为JSON格式"""
-        items = self.get_dataset_items(dataset_name)
-        return [
-            {
-                "instruction": item.instruction,
-                "input": item.input,
-                "output": item.output,
-                "metadata": item.metadata
-            }
-            for item in items
-        ]
+        with self.session() as session:
+            items = session.query(DatasetItem).filter(
+                DatasetItem.dataset_name == dataset_name
+            ).all()
+            
+            return [
+                {
+                    "instruction": item.instruction,
+                    "input": item.input_,
+                    "output": item.output,
+                    "extra_data": item.extra_data
+                }
+                for item in items
+            ]
     
     def save_to_jsonl(self, dataset_name: str, output_path: str):
         """保存数据集为JSONL格式"""

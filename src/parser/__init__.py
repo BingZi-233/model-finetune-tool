@@ -1,7 +1,7 @@
 """文档解析器基类"""
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List
+from typing import Any, Dict, List, Type
 
 
 class BaseParser(ABC):
@@ -82,7 +82,8 @@ class MarkdownParser(BaseParser):
             content = f.read()
         
         # 移除YAML front matter
-        content = re.sub(r'^---\n.*?\n---\n', '', content, flags=re.DOTALL)
+        # 移除YAML front matter
+        content = re.sub(r'^---\n[\s\S]*?---\n', '', content)
         
         # 移除代码块
         content = re.sub(r'```[\s\S]*?```', '', content)
@@ -105,7 +106,7 @@ class MarkdownParser(BaseParser):
             para = re.sub(r'^[\s]*[-*+]\s+', '', para)
             para = re.sub(r'^[\s]*\d+\.\s+', '', para)
             
-            if para and len(para) > 10:  # 过滤太短的段落
+            if para and len(para) > 5:  # 过滤太短的段落
                 paragraphs.append(para)
         
         return paragraphs
