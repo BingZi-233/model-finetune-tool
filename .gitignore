@@ -136,7 +136,30 @@ Thumbs.db
 # Project specific
 data/*
 !data/.gitkeep
-output/*
-checkpoints/*
+output/**
+checkpoints/**
 *.db
 *.log
+*.pth
+*.safetensors
+*.h5
+
+# Poetry
+poetry.lock
+
+# HuggingFace cache
+.cache/
+
+# Training temp
+tmp/
+temp/
+*.tmp
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
