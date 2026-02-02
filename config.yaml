@@ -1,10 +1,14 @@
 # OpenAI API配置
 llm:
   api_key: "${OPENAI_API_KEY}"
+  # 推荐配置（高品质，不在乎额度）：
+  # - gpt-4o: 最新最强模型
+  # - gpt-4-turbo: 快速且强大
+  # - o1: 推理能力强，适合复杂任务
   base_url: "https://api.openai.com/v1"
-  model: "gpt-3.5-turbo"
-  temperature: 0.7
-  max_tokens: 2000
+  model: "gpt-4o"  # 最高品质
+  temperature: 0.3  # 较低温度，更稳定
+  max_tokens: 4096  # 更长输出
 
 # 数据库配置（SQLite为默认）
 database:
