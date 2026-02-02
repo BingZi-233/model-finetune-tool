@@ -295,12 +295,12 @@ def parse(
     # 获取全局配置路径
     config_path = ctx.obj.get('config', 'config.yaml')
     
-    click.echo("=" * 60)
-    click.echo("🚀 开始解析文档并生成数据集")
-    click.echo("=" * 60)
-    click.echo(f"📁 输入目录: {input_dir}")
-    click.echo(f"📊 数据集名称: {dataset_name}")
-    click.echo(f"🔄 递归扫描: {'是' if recursive else '否'}")
+    print("=" * 60, file=sys.stderr, flush=True)
+    print("🚀 开始解析文档并生成数据集", file=sys.stderr, flush=True)
+    print("=" * 60, file=sys.stderr, flush=True)
+    print(f"📁 输入目录: {input_dir}", file=sys.stderr, flush=True)
+    print(f"📊 数据集名称: {dataset_name}", file=sys.stderr, flush=True)
+    print(f"🔄 递归扫描: {'是' if recursive else '否'}", file=sys.stderr, flush=True)
     
     # 验证参数
     if chunk_size is not None:
@@ -327,22 +327,22 @@ def parse(
     try:
         input_dir = validate_path(input_dir)
     except ValueError as e:
-        click.echo(f"❌ {e}")
+        print(f"❌ {e}", file=sys.stderr, flush=True)
         return
     
     try:
         cfg = load_config(config_path)
     except Exception as e:
-        click.echo(f"❌ 加载配置失败: {e}")
+        print(f"❌ 加载配置失败: {e}", file=sys.stderr, flush=True)
         return
     
     if chunk_size:
         cfg.datasets.chunk_size = chunk_size
     
-    click.echo(f"📏 文本块大小: {cfg.datasets.chunk_size}")
-    click.echo(f"❓ 每个文本块生成QA对数量: {qa_pairs}")
-    click.echo(f"🤖 LLM模型: {cfg.llm.model}")
-    click.echo("-" * 60)
+    print(f"📏 文本块大小: {cfg.datasets.chunk_size}", file=sys.stderr, flush=True)
+    print(f"❓ 每个文本块生成QA对数量: {qa_pairs}", file=sys.stderr, flush=True)
+    print(f"🤖 LLM模型: {cfg.llm.model}", file=sys.stderr, flush=True)
+    print("-" * 60, file=sys.stderr, flush=True)
     
     # 初始化管理器
     parser = ParserManager()
@@ -350,25 +350,25 @@ def parse(
     llm_client = LLMClient()
     
     # 解析文档
-    click.echo(f"📂 开始扫描文档目录...")
+    print(f"📂 开始扫描文档目录...", file=sys.stderr, flush=True)
     
     try:
         documents = parser.parse_directory(input_dir, recursive)
     except Exception as e:
-        click.echo(f"❌ 解析文档失败: {e}")
+        print(f"❌ 解析文档失败: {e}", file=sys.stderr, flush=True)
         logger.error(f"解析文档失败: {e}", exc_info=True)
         return
     
     if not documents:
-        click.echo("⚠️ 没有找到可解析的文档")
+        print("⚠️ 没有找到可解析的文档", file=sys.stderr, flush=True)
         return
     
-    click.echo("-" * 60)
-    click.echo(f"✅ 扫描完成! 发现 {len(documents)} 个有效文档")
+    print("-" * 60, file=sys.stderr, flush=True)
+    print(f"✅ 扫描完成! 发现 {len(documents)} 个有效文档", file=sys.stderr, flush=True)
     
     # 统计总段落数
     total_paragraphs = sum(len(paras) for paras in documents.values())
-    click.echo(f"📝 总段落数: {total_paragraphs}")
+    print(f"📝 总段落数: {total_paragraphs}", file=sys.stderr, flush=True)
     
     # 处理每个文档
     total_items = 0
@@ -376,9 +376,9 @@ def parse(
     error_files = []
     total_chunks = 0
     
-    click.echo("-" * 60)
-    click.echo("🔄 开始生成QA对...")
-    click.echo("-" * 60)
+    print("-" * 60, file=sys.stderr, flush=True)
+    print("🔄 开始生成QA对...", file=sys.stderr, flush=True)
+    print("-" * 60, file=sys.stderr, flush=True)
     
     for file_path, paragraphs in tqdm(documents.items(), desc="🔄 处理文档"):
         # 验证文件大小
@@ -460,17 +460,17 @@ def parse(
         # 每个文件处理完成后输出总结
         print(f"\n✅ [{file_name}] 处理完成! 本文件生成 {sum(1 for _ in chunks)} 个文本块", file=sys.stderr, flush=True)
     
-    click.echo("-" * 60)
-    click.echo("📊 处理完成! 统计信息:")
-    click.echo("=" * 60)
-    click.echo(f"✅ 成功处理文档: {len(documents) - skipped_files - len(error_files)}")
-    click.echo(f"📌 跳过已处理文档: {skipped_files}")
+    print("-" * 60, file=sys.stderr, flush=True)
+    print("📊 处理完成! 统计信息:", file=sys.stderr, flush=True)
+    print("=" * 60, file=sys.stderr, flush=True)
+    print(f"✅ 成功处理文档: {len(documents) - skipped_files - len(error_files)}", file=sys.stderr, flush=True)
+    print(f"📌 跳过已处理文档: {skipped_files}", file=sys.stderr, flush=True)
     if error_files:
-        click.echo(f"❌ 处理失败文档: {len(error_files)}")
-    click.echo(f"📦 总文本块数: {total_chunks}")
-    click.echo(f"🎯 生成QA对总数: {total_items}")
-    click.echo(f"📁 数据集: {dataset_name}")
-    click.echo("=" * 60)
+        print(f"❌ 处理失败文档: {len(error_files)}", file=sys.stderr, flush=True)
+    print(f"📦 总文本块数: {total_chunks}", file=sys.stderr, flush=True)
+    print(f"🎯 生成QA对总数: {total_items}", file=sys.stderr, flush=True)
+    print(f"📁 数据集: {dataset_name}", file=sys.stderr, flush=True)
+    print("=" * 60, file=sys.stderr, flush=True)
 
 
 @cli.command()
@@ -486,12 +486,12 @@ def export(dataset_name: str, output_format: str, output: Optional[str]):
     
     if output_format == 'jsonl':
         count = db_manager.save_to_jsonl(dataset_name, output)
-        click.echo(f"✅ 导出 {count} 条数据到 {output}")
+        print(f"✅ 导出 {count} 条数据到 {output}", file=sys.stderr, flush=True)
     else:
         data = db_manager.export_dataset(dataset_name)
         with open(output, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
-        click.echo(f"✅ 导出 {len(data)} 条数据到 {output}")
+        print(f"✅ 导出 {len(data)} 条数据到 {output}", file=sys.stderr, flush=True)
 
 
 @cli.command()
@@ -501,8 +501,8 @@ def stats(dataset_name: str):
     db_manager = DatasetManager()
     stats = db_manager.get_dataset_stats(dataset_name)
     
-    click.echo(f"数据集: {stats['dataset_name']}")
-    click.echo(f"总条目: {stats['total_items']}")
+    print(f"数据集: {stats['dataset_name']}", file=sys.stderr, flush=True)
+    print(f"总条目: {stats['total_items']}", file=sys.stderr, flush=True)
 
 
 @cli.command()
@@ -529,7 +529,7 @@ def train(dataset_name: str, model: Optional[str], epochs: Optional[int], batch_
     
     output_dir = f"./output/{dataset_name}"
     
-    click.echo(f"开始训练模型: {model_name}")
+    print(f"开始训练模型: {model_name}", file=sys.stderr, flush=True)
     
     train_lora(
         model_name=model_name,
@@ -539,7 +539,7 @@ def train(dataset_name: str, model: Optional[str], epochs: Optional[int], batch_
         epochs=epochs
     )
     
-    click.echo(f"✅ 训练完成！模型保存到: {output_dir}")
+    print(f"✅ 训练完成！模型保存到: {output_dir}", file=sys.stderr, flush=True)
 
 
 @cli.command()
@@ -551,13 +551,13 @@ def merge(dataset_name: str, base_model: str, output: Optional[str]):
     lora_path = f"./output/{dataset_name}/lora_model"
     
     if not Path(lora_path).exists():
-        click.echo(f"❌ LoRA模型不存在: {lora_path}")
+        print(f"❌ LoRA模型不存在: {lora_path}", file=sys.stderr, flush=True)
         return
     
     output_path = output or f"./output/{dataset_name}/merged"
     
     merge_model(base_model, lora_path, output_path)
-    click.echo(f"✅ 模型已合并到: {output_path}")
+    print(f"✅ 模型已合并到: {output_path}", file=sys.stderr, flush=True)
 
 
 @cli.command()
@@ -566,7 +566,7 @@ def clear(dataset_name: str):
     """清空数据集"""
     db_manager = DatasetManager()
     db_manager.clear_dataset(dataset_name)
-    click.echo(f"✅ 已清空数据集: {dataset_name}")
+    print(f"✅ 已清空数据集: {dataset_name}", file=sys.stderr, flush=True)
 
 
 def main():
