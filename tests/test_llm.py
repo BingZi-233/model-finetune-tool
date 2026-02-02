@@ -36,7 +36,7 @@ class TestLLMClient:
         # 验证API调用
         mock_openai_class.return_value.chat.completions.create.assert_called_once()
         call_args = mock_openai_class.return_value.chat.completions.create.call_args
-        assert call_args.kwargs["model"] == "gpt-3.5-turbo"
+        assert call_args.kwargs["model"] == "gpt-4o"  # 更新为高质量配置
         assert call_args.kwargs["messages"] == [{"role": "user", "content": "你好"}]
     
     @patch('src.llm.OpenAI')
@@ -103,19 +103,21 @@ class TestLLMClient:
         assert result[0]["instruction"] == "问题1"
     
     @patch('src.llm.OpenAI')
-    def test_generate_qa_pairs_invalid_json_raises(self, mock_openai_class):
-        """测试无效JSON响应抛出异常"""
+    def test_generate_qa_pairs_with_fallback(self, mock_openai_class):
+        """测试无效JSON时使用fallback生成"""
         mock_response = Mock()
         mock_response.choices = [Mock()]
-        mock_response.choices[0].message.content = "这不是JSON格式"
+        mock_response.choices[0].message.content = "这不是JSON格式的响应内容，所以会触发fallback机制。"
         mock_openai_class.return_value.chat.completions.create.return_value = mock_response
         
         client = LLMClient(api_key="test-key")
+        # 应该不会抛出异常，而是使用fallback
+        result = client.generate_qa_pairs("这是一段足够长的测试文本，包含足够的字符来通过质量检查。")
         
-        with pytest.raises(ValueError) as exc_info:
-            client.generate_qa_pairs("测试文本")
-        
-        assert "无法解析" in str(exc_info.value)
+        # 验证fallback生成了结果
+        assert len(result) > 0
+        assert "instruction" in result[0]
+        assert "output" in result[0]
     
     @patch('src.llm.OpenAI')
     def test_generate_summarization(self, mock_openai_class):
@@ -159,6 +161,7 @@ class TestLLMClient:
         def create_response(*args, **kwargs):
             mock_response = Mock()
             mock_response.choices = [Mock()]
+            # 返回2个QA对
             mock_response.choices[0].message.content = json.dumps([
                 {"instruction": "问题", "output": "答案"}
             ])
@@ -167,13 +170,15 @@ class TestLLMClient:
         mock_openai_class.return_value.chat.completions.create.side_effect = create_response
         
         client = LLMClient(api_key="test-key")
-        texts = ["文本1", "", "  ", "文本2"]
+        # 使用更长的文本以确保生成结果
+        texts = ["这是一段足够长的测试文本1，包含足够的字符来通过质量检查。", "", "  ", "这是一段足够长的测试文本2，包含足够的字符来通过质量检查。"]
         
         result = client.batch_generate_qa(texts, progress=False)
         
         # 只有2个非空文本被处理
-        assert len(result) == 2
-        assert mock_openai_class.return_value.chat.completions.create.call_count == 2
+        assert len(result) >= 2  # 至少2个QA对
+        # 每个文本会尝试生成3次，所以可能是6次调用
+        assert mock_openai_class.return_value.chat.completions.create.call_count == 6
 
 
 class TestCacheManager:

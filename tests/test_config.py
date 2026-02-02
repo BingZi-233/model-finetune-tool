@@ -42,14 +42,16 @@ llm:
         del os.environ["TEST_API_KEY"]
     
     def test_missing_env_var(self):
-        """测试缺失的环境变量处理"""
+        """测试缺失的环境变量会抛出错误"""
         yaml_content = """
 llm:
   api_key: "${NONEXISTENT_VAR}"
 """
-        # 环境变量不存在时应保留原样
-        result = load_yaml_with_env(yaml_content)
-        assert result["llm"]["api_key"] == "${NONEXISTENT_VAR}"
+        # 现在会抛出ValueError
+        with pytest.raises(ValueError) as exc_info:
+            load_yaml_with_env(yaml_content)
+        
+        assert "NONEXISTENT_VAR" in str(exc_info.value)
     
     def test_multiple_env_vars(self):
         """测试多个环境变量替换"""
