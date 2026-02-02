@@ -1,6 +1,8 @@
 """配置文件加载模块"""
+
 import logging
 import os
+import re
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -18,7 +20,7 @@ class LLMConfig(BaseModel):
     temperature: float = 0.7
     max_tokens: int = 2000
 
-    @field_validator('temperature')
+    @field_validator("temperature")
     @classmethod
     def validate_temperature(cls, v: float) -> float:
         if v < 0 or v > 2:
@@ -26,7 +28,7 @@ class LLMConfig(BaseModel):
             return 0.7
         return v
 
-    @field_validator('max_tokens')
+    @field_validator("max_tokens")
     @classmethod
     def validate_max_tokens(cls, v: int) -> int:
         if v < 1:
@@ -44,16 +46,16 @@ class DatabaseConfig(BaseModel):
     password: Optional[str] = None
     database: Optional[str] = None
 
-    @field_validator('type')
+    @field_validator("type")
     @classmethod
     def validate_type(cls, v: str) -> str:
-        valid_types = ['sqlite', 'mysql', 'postgresql']
+        valid_types = ["sqlite", "mysql", "postgresql"]
         if v.lower() not in valid_types:
             logger.warning(f"不支持的数据库类型: {v}，使用 sqlite")
-            return 'sqlite'
+            return "sqlite"
         return v.lower()
 
-    @field_validator('port')
+    @field_validator("port")
     @classmethod
     def validate_port(cls, v: int) -> int:
         if v < 1 or v > 65535:
@@ -68,7 +70,7 @@ class DatasetConfig(BaseModel):
     chunk_size: int = 1000
     chunk_overlap: int = 200
 
-    @field_validator('chunk_size')
+    @field_validator("chunk_size")
     @classmethod
     def validate_chunk_size(cls, v: int) -> int:
         if v < 100:
@@ -79,15 +81,17 @@ class DatasetConfig(BaseModel):
             return 1000
         return v
 
-    @field_validator('chunk_overlap')
+    @field_validator("chunk_overlap")
     @classmethod
     def validate_chunk_overlap(cls, v: int, info) -> int:
-        chunk_size = info.data.get('chunk_size', 1000)
+        chunk_size = info.data.get("chunk_size", 1000)
         if v < 0:
             logger.warning(f"chunk_overlap 值 {v} 无效，使用默认值 200")
             return 200
         if v >= chunk_size:
-            logger.warning(f"chunk_overlap ({v}) >= chunk_size ({chunk_size})，使用默认值 200")
+            logger.warning(
+                f"chunk_overlap ({v}) >= chunk_size ({chunk_size})，使用默认值 200"
+            )
             return min(200, chunk_size // 2)
         return v
 
@@ -98,7 +102,7 @@ class LoRAConfig(BaseModel):
     dropout: float = 0.1
     target_modules: list = ["q_proj", "k_proj", "v_proj", "o_proj"]
 
-    @field_validator('r')
+    @field_validator("r")
     @classmethod
     def validate_r(cls, v: int) -> int:
         if v < 1:
@@ -106,7 +110,7 @@ class LoRAConfig(BaseModel):
             return 8
         return v
 
-    @field_validator('alpha')
+    @field_validator("alpha")
     @classmethod
     def validate_alpha(cls, v: int) -> int:
         if v < 1:
@@ -114,7 +118,7 @@ class LoRAConfig(BaseModel):
             return 16
         return v
 
-    @field_validator('dropout')
+    @field_validator("dropout")
     @classmethod
     def validate_dropout(cls, v: float) -> float:
         if v < 0 or v > 1:
@@ -131,7 +135,7 @@ class TrainingConfig(BaseModel):
     epochs: int = 3
     max_length: int = 2048
 
-    @field_validator('batch_size')
+    @field_validator("batch_size")
     @classmethod
     def validate_batch_size(cls, v: int) -> int:
         if v < 1:
@@ -139,7 +143,7 @@ class TrainingConfig(BaseModel):
             return 4
         return v
 
-    @field_validator('learning_rate')
+    @field_validator("learning_rate")
     @classmethod
     def validate_learning_rate(cls, v: float) -> float:
         if v <= 0:
@@ -147,7 +151,7 @@ class TrainingConfig(BaseModel):
             return 0.0002
         return v
 
-    @field_validator('epochs')
+    @field_validator("epochs")
     @classmethod
     def validate_epochs(cls, v: int) -> int:
         if v < 1:
@@ -155,7 +159,7 @@ class TrainingConfig(BaseModel):
             return 3
         return v
 
-    @field_validator('max_length')
+    @field_validator("max_length")
     @classmethod
     def validate_max_length(cls, v: int) -> int:
         if v < 1:
@@ -182,7 +186,7 @@ class Config(BaseModel):
     output: OutputConfig = OutputConfig()
     git: GitConfig = GitConfig()
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_output_dirs(self):
         """验证输出目录配置"""
         try:
@@ -194,8 +198,7 @@ class Config(BaseModel):
 
 def load_yaml_with_env(yaml_str: str) -> Dict[str, Any]:
     """加载YAML并替换环境变量"""
-    import re
-    
+
     def replace_env(match):
         env_var = match.group(1)
         env_value = os.environ.get(env_var)
@@ -206,35 +209,35 @@ def load_yaml_with_env(yaml_str: str) -> Dict[str, Any]:
                 f"  export {env_var}=your_value"
             )
         return env_value
-    
+
     # 替换 ${VAR} 格式的环境变量
-    yaml_content = re.sub(r'\$\{([^}]+)\}', replace_env, yaml_str)
+    yaml_content = re.sub(r"\$\{([^}]+)\}", replace_env, yaml_str)
     return yaml.safe_load(yaml_content)
 
 
 def load_config(config_path: str = "config.yaml") -> Config:
     """加载配置文件
-    
+
     Args:
         config_path: 配置文件路径
-        
+
     Returns:
         Config 对象
-        
+
     Raises:
         FileNotFoundError: 配置文件不存在
         ValueError: 配置无效
     """
     path = Path(config_path)
-    
+
     if not path.exists():
         raise FileNotFoundError(f"配置文件不存在: {config_path}")
-    
-    with open(path, 'r', encoding='utf-8') as f:
+
+    with open(path, "r", encoding="utf-8") as f:
         yaml_content = f.read()
-    
+
     config_dict = load_yaml_with_env(yaml_content)
-    
+
     # 验证配置
     try:
         config = Config(**config_dict)
@@ -248,28 +251,26 @@ def load_config(config_path: str = "config.yaml") -> Config:
 # ============ 配置管理器（支持热重载） ============
 class ConfigManager:
     """配置管理器，支持热重载和配置切换"""
-    
+
     def __init__(self):
         self._config: Optional[Config] = None
         self._config_path: Optional[str] = None
         self._last_modified: Optional[float] = None
-    
+
     def load_config(
-        self, 
-        config_path: str = "config.yaml", 
-        force: bool = False
+        self, config_path: str = "config.yaml", force: bool = False
     ) -> Config:
         """加载配置文件，支持热重载
-        
+
         Args:
             config_path: 配置文件路径
             force: 强制重新加载
-            
+
         Returns:
             Config 对象
         """
         config_path = os.path.normpath(config_path)
-        
+
         # 检查是否需要重新加载
         if not force and self._config is not None and self._config_path == config_path:
             try:
@@ -278,25 +279,25 @@ class ConfigManager:
                     return self._config
             except OSError:
                 pass
-        
+
         # 重新加载配置
         self._config_path = config_path
         self._config = load_config(config_path)
-        
+
         try:
             self._last_modified = os.path.getmtime(config_path)
         except OSError:
             self._last_modified = None
-        
+
         logger.info(f"配置已加载: {config_path}")
         return self._config
-    
+
     def get_config(self) -> Config:
         """获取当前配置"""
         if self._config is None:
             return load_config()
         return self._config
-    
+
     def clear_cache(self):
         """清除配置缓存"""
         self._config = None
@@ -313,14 +314,13 @@ def get_config() -> Config:
     return _config_manager.get_config()
 
 
-def reload_config(config_path: str = "config.yaml", force: bool = True) -> Config:
+def reload_config(config_path: str = "config.yaml") -> Config:
     """重新加载配置
-    
+
     Args:
         config_path: 配置文件路径
-        force: 强制重新加载
-        
+
     Returns:
         Config 对象
     """
-    return _config_manager.load_config(config_path, force=force)
+    return _config_manager.load_config(config_path, force=True)

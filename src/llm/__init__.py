@@ -9,6 +9,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -335,8 +336,6 @@ class LLMClient:
         2. 从代码块中提取
         3. 查找JSON数组
         """
-        import re
-
         # 首先清理markdown代码块标记
         # 处理 ```json\n[ 和 ```json [ 等各种格式
         cleaned = response.strip()
@@ -388,8 +387,6 @@ class LLMClient:
 
         当LLM生成失败时使用
         """
-        import re
-
         # 切分文本为句子
         sentences = re.split(r"[。！？\n]", text)
         sentences = [s.strip() for s in sentences if s.strip() and len(s) > 10]
