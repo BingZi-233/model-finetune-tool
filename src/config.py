@@ -73,10 +73,18 @@ def load_yaml_with_env(yaml_str: str) -> Dict[str, Any]:
     
     def replace_env(match):
         env_var = match.group(1)
-        return os.environ.get(env_var, match.group(0))
+        env_value = os.environ.get(env_var)
+        if env_value is None:
+            raise ValueError(
+                f"环境变量 '{env_var}' 未设置。\n"
+                f"请在运行前设置该环境变量，例如:\n"
+                f"  export {env_var}=your_value"
+            )
+        return env_value
     
     # 替换 ${VAR} 格式的环境变量
-    return yaml.safe_load(re.sub(r'\$\{([^}]+)\}', replace_env, yaml_str))
+    yaml_content = re.sub(r'\$\{([^}]+)\}', replace_env, yaml_str)
+    return yaml.safe_load(yaml_content)
 
 
 def load_config(config_path: str = "config.yaml") -> Config:
