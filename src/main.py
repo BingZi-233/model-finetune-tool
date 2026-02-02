@@ -528,11 +528,13 @@ def stats(dataset_name: str):
 @click.option("--model", "-m", help="模型名称")
 @click.option("--epochs", "-e", default=None, help="训练轮数")
 @click.option("--batch-size", "-b", default=None, help="批次大小")
+@click.option("--max-length", "-l", default=None, help="最大序列长度")
 def train(
     dataset_name: str,
     model: Optional[str],
     epochs: Optional[int],
     batch_size: Optional[int],
+    max_length: Optional[int],
 ):
     """训练模型"""
     cfg = get_config()
@@ -540,6 +542,7 @@ def train(
     model_name = model or cfg.training.model_name
     epochs = epochs or cfg.training.epochs
     batch_size = batch_size or cfg.training.batch_size
+    max_length = max_length or cfg.training.max_length
 
     # 导出数据
     data_path = f"/tmp/{dataset_name}_train.jsonl"
@@ -560,6 +563,7 @@ def train(
         output_dir=output_dir,
         batch_size=batch_size,
         epochs=epochs,
+        max_length=max_length,
     )
 
     logger.info(f"✅ 训练完成！模型保存到: {output_dir}")

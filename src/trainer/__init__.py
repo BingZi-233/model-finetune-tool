@@ -145,6 +145,13 @@ def train_lora(
     gpu_info = check_gpu_available()
     device_map = get_device_map()
 
+    # MPS 内存优化：减少序列长度
+    if gpu_info["mps"] and max_length > 1024:
+        logger.warning(
+            "MPS 模式下自动将 max_length 从 %d 降至 1024 以避免 OOM", max_length
+        )
+        max_length = 1024
+
     # 加载模型
     logger.info(f"加载模型: {model_name}")
     logger.info(f"使用设备: {device_map}")
@@ -192,24 +199,36 @@ def train_lora(
     # 检查点目录
     checkpoint_dir = output_dir / "checkpoints"
 
+    # MPS 内存优化
+    mps_memory_ratio = 0.5  # MPS 使用 50% 内存上限
+    gradient_accumulation_steps = 4 if not gpu_info["mps"] else 2
+
     training_args = TrainingArguments(
         output_dir=str(checkpoint_dir),
         num_train_epochs=epochs,
         per_device_train_batch_size=batch_size,
+        gradient_accumulation_steps=gradient_accumulation_steps,
         learning_rate=learning_rate,
-        gradient_accumulation_steps=4,
         save_steps=100,
         save_total_limit=3,
         logging_steps=10,
         report_to="none",
         fp16=gpu_info["cuda"],  # 仅在 CUDA 上启用 fp16
+        bf16=gpu_info["mps"],  # MPS 使用 bf16
         optim="paged_adamw_8bit",
         load_best_model_at_end=False,
         resume_from_checkpoint=resume_from,
+        max_grad_norm=1.0,
+        warmup_steps=10,
     )
 
     # 训练
     logger.info("开始训练...")
+    if gpu_info["mps"]:
+        logger.warning(
+            "MPS 模式下：如遇 OOM，可使用环境变量: PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0"
+        )
+
     trainer = Trainer(
         model=model, args=training_args, train_dataset=dataset, tokenizer=tokenizer
     )
