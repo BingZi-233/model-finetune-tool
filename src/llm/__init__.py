@@ -202,16 +202,24 @@ class LLMClient:
 3. **直接输出纯JSON，不要用```包裹**
 4. 不要添加任何解释性文字"""
         
+        # 记录开始调用LLM
+        logger.info(f"开始生成QA对，文本长度: {len(text)} 字符")
+        
         # 尝试多次生成，选择最好的结果
         best_result = []
         for attempt in range(3):  # 最多重试3次
             try:
+                logger.info(f"LLM调用尝试 {attempt + 1}/3...")
+                
                 response = self.chat([
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ])
                 
+                logger.info(f"LLM响应长度: {len(response)} 字符")
+                
                 pairs = self._extract_json(response)
+                logger.info(f"解析得到 {len(pairs)} 个QA对")
                 
                 # 验证质量
                 if self._validate_qa_pairs(pairs, num_pairs):

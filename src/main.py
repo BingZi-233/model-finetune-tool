@@ -399,8 +399,20 @@ def parse(
                 click.echo(f"⚠️ 跳过过长文本块: {e}")
                 continue
             
+            # 输出当前处理进度
+            file_name = Path(file_path).name
+            chunk_info = f"📝 [{file_name}] 文本块 {chunk_idx + 1}/{len(chunks)}"
+            click.echo(chunk_info)
+            
             try:
+                # 生成QA对（会显示LLM响应）
                 qa = llm_client.generate_qa_pairs(chunk, qa_pairs)
+                
+                # 输出生成结果
+                if qa:
+                    click.echo(f"   ✅ 成功生成 {len(qa)} 个QA对")
+                else:
+                    click.echo(f"   ⚠️ 未生成任何QA对")
                 
                 for qa_item in qa:
                     db_manager.add_dataset_item(
@@ -415,6 +427,7 @@ def parse(
                     total_items += 1
             except Exception as e:
                 error_files.append((file_path, str(e)))
+                click.echo(f"   ❌ 生成失败: {e}")
                 logger.error(f"生成QA失败: {e}")
                 continue
     
