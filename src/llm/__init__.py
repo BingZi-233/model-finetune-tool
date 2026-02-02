@@ -303,8 +303,10 @@ class LLMClient:
         """
         import re
         
-        # 首先清理markdown代码块标记（处理不完整的代码块）
-        cleaned = re.sub(r'^```(?:json)?\s*', '', response.strip())
+        # 首先清理markdown代码块标记
+        # 处理 ```json\n[ 和 ```json [ 等各种格式
+        cleaned = response.strip()
+        cleaned = re.sub(r'^```(?:json)?\s*', '', cleaned)
         cleaned = re.sub(r'\s*```\s*$', '', cleaned)
         
         # 方式1: 解析清理后的内容
@@ -313,28 +315,30 @@ class LLMClient:
         except json.JSONDecodeError:
             pass
         
-        # 方式2: 从原始响应中提取代码块
-        json_match = re.search(
-            r'```(?:json)?\s*([\s\S]*?)\s*```', 
-            response
-        )
+        # 方式2: 从代码块中提取（更宽松的匹配）
+        json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', response)
         if json_match:
             try:
-                return json.loads(json_match.group(1))
+                content = json_match.group(1).strip()
+                # 清理可能的 ```json 残留
+                content = re.sub(r'^```(?:json)?\s*', '', content)
+                content = re.sub(r'\s*```\s*$', '', content)
+                return json.loads(content)
             except json.JSONDecodeError:
                 pass
         
-        # 方式3: 查找JSON数组
-        array_match = re.search(r'(\[[\s\S]*?\])\s*$', response)
+        # 方式3: 查找JSON数组（支持不完整的代码块）
+        # 匹配从 [ 开始到 ] 结束的内容
+        array_match = re.search(r'(\[[\s\S]*?\])(?:\s*$|\s*\n?\s*```)', response)
         if array_match:
             try:
                 return json.loads(array_match.group(1))
             except json.JSONDecodeError:
                 pass
         
-        # 方式4: 查找任意JSON数组
+        # 方式4: 查找最后一个JSON数组（最常见的情况）
         all_arrays = re.findall(r'\[[\s\S]*?\]', response)
-        for arr_str in all_arrays:
+        for arr_str in reversed(all_arrays):  # 从后往前找
             try:
                 parsed = json.loads(arr_str)
                 if isinstance(parsed, list) and len(parsed) > 0:
