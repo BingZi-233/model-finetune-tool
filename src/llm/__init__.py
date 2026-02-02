@@ -8,6 +8,7 @@ import hashlib
 import json
 import logging
 import os
+import sys
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -223,28 +224,26 @@ class LLMClient:
         best_result = []
         for attempt in range(3):  # 最多重试3次
             try:
-                logger.info(f"LLM调用尝试 {attempt + 1}/3...")
+                print(f"   🤖 调用LLM生成QA对...", file=sys.stderr, flush=True)
                 
                 response = self.chat([
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ], json_mode=True)
                 
-                logger.info(f"LLM响应长度: {len(response)} 字符")
+                print(f"   📥 LLM响应 ({len(response)} 字符)，正在解析...", file=sys.stderr, flush=True)
                 
                 pairs = self._extract_json(response)
-                logger.info(f"解析得到 {len(pairs)} 个QA对")
                 
                 # 验证质量
                 if self._validate_qa_pairs(pairs, num_pairs):
                     best_result = pairs
-                    logger.info(f"成功生成 {len(pairs)} 个QA对 (尝试 {attempt + 1}/3)")
                     break
                     
             except JSONParseError as e:
-                logger.warning(f"JSON解析失败 (尝试 {attempt + 1}/3): {e}")
+                print(f"   ⚠️ JSON解析失败 (尝试 {attempt + 1}/3): {e}", file=sys.stderr, flush=True)
             except Exception as e:
-                logger.error(f"生成QA对失败 (尝试 {attempt + 1}/3): {e}")
+                print(f"   ❌ 调用失败 (尝试 {attempt + 1}/3): {e}", file=sys.stderr, flush=True)
                 if attempt == 2:  # 最后一次尝试
                     raise QAGenerationError(f"生成QA对失败: {e}")
                 continue
