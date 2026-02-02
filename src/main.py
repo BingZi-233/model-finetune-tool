@@ -43,7 +43,7 @@ def setup_signal_handlers():
     
     def signal_handler(signum, frame):
         logger.info(f"收到信号 {signum}，正在安全退出...")
-        click.echo("\n⚠️ 检测到中断信号，正在安全退出...")
+        logger.info("\n⚠️ 检测到中断信号，正在安全退出...")
         sys.exit(0)
     
     # 注册信号处理器
@@ -254,7 +254,7 @@ def cli(ctx, config, verbose, quiet):
     
     # 处理全局选项
     if verbose and quiet:
-        click.echo("⚠️ 不能同时使用 --verbose 和 --quiet")
+        logger.info("⚠️ 不能同时使用 --verbose 和 --quiet")
     
     if verbose:
         enable_verbose()
@@ -278,9 +278,9 @@ def init(config: str):
     """初始化项目"""
     config_path = Path(config)
     if config_path.exists():
-        click.echo(f"配置文件已存在: {config}")
+        logger.info(f"配置文件已存在: {config}")
     else:
-        click.echo(f"创建配置: {config}")
+        logger.info(f"创建配置: {config}")
 
 
 @cli.command()
@@ -392,7 +392,7 @@ def parse(
         try:
             validate_file_size(file_path)
         except ValueError as e:
-            click.echo(f"⚠️ 跳过大文件: {e}")
+            logger.info(f"⚠️ 跳过大文件: {e}")
             continue
         
         # 计算内容hash
