@@ -1,0 +1,24 @@
+project = "model-finetune-tool"
+version = "0.1.0"
+description = "方便的大模型微调工具"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pydantic = "^2.0"
+pyyaml = "^6.0"
+openai = "^1.0"
+python-docx = "^1.0"
+pymupdf = "^1.23"
+markdown = "^3.5"
+sqlalchemy = "^2.0"
+pymysql = "^1.1"
+psycopg2-binary = "^2.9"
+python-dotenv = "^1.0"
+tqdm = "^4.66"
+
+[tool.poetry.scripts]
+finetune = "src.main:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

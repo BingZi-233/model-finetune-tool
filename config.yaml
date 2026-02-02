@@ -1,0 +1,48 @@
+# OpenAI API配置
+llm:
+  api_key: "${OPENAI_API_KEY}"
+  base_url: "https://api.openai.com/v1"
+  model: "gpt-3.5-turbo"
+  temperature: 0.7
+  max_tokens: 2000
+
+# 数据库配置（SQLite为默认）
+database:
+  type: "sqlite"  # sqlite, mysql, postgresql
+  path: "./data/datasets.db"  # SQLite文件路径
+  # MySQL/PostgreSQL配置
+  host: "localhost"
+  port: 3306
+  username: "root"
+  password: ""
+  database: "model_finetune"
+
+# 数据集配置
+datasets:
+  input_dir: "./documents"
+  output_dir: "./data"
+  chunk_size: 1000
+  chunk_overlap: 200
+
+# 训练配置
+training:
+  model_name: "Qwen/Qwen2.5-0.5B-Instruct"
+  lora:
+    r: 8
+    alpha: 16
+    dropout: 0.1
+    target_modules: ["q_proj", "k_proj", "v_proj", "o_proj"]
+  batch_size: 4
+  learning_rate: 0.0002
+  epochs: 3
+  max_length: 2048
+
+# 输出配置
+output:
+  model_dir: "./output"
+  checkpoint_dir: "./checkpoints"
+
+# Git配置
+git:
+  auto_commit: true
+  commit_message: "Update dataset: {dataset_name}"
