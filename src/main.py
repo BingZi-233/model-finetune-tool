@@ -413,7 +413,7 @@ def parse(
                     chunks.append(para)
         
         total_chunks += len(chunks)
-        click.echo(f"📄 [{Path(file_path).name}] {len(paragraphs)} 段落 → {len(chunks)} 文本块")
+        print(f"📄 [{Path(file_path).name}] {len(paragraphs)} 段落 → {len(chunks)} 文本块", file=sys.stderr, flush=True)
         
         # 生成QA对
         for chunk_idx, chunk in enumerate(chunks):
@@ -421,13 +421,14 @@ def parse(
             try:
                 validate_text_length(chunk)
             except ValueError as e:
-                click.echo(f"⚠️ 跳过过长文本块: {e}")
+                print(f"⚠️ 跳过过长文本块: {e}", file=sys.stderr, flush=True)
                 continue
             
-            # 输出当前处理进度
+            # 输出当前处理进度到 stderr
             file_name = Path(file_path).name
-            chunk_info = f"📝 [{file_name}] 文本块 {chunk_idx + 1}/{len(chunks)}"
-            click.echo(chunk_info)
+            total_chunks_processed = sum(1 for f, p in documents.items() for _ in range(min(len(p), 100)))  # 估算
+            print(f"\r🔄 处理中: [{file_name}] {chunk_idx + 1}/{len(chunks)} 文本块... ", 
+                  end="", file=sys.stderr, flush=True)
             
             try:
                 # 生成QA对（会显示LLM响应）
@@ -435,9 +436,9 @@ def parse(
                 
                 # 输出生成结果
                 if qa:
-                    click.echo(f"   ✅ 成功生成 {len(qa)} 个QA对")
+                    print(f"   ✅ 生成 {len(qa)} 个QA对 (总计: {total_items + len(qa)})", file=sys.stderr, flush=True)
                 else:
-                    click.echo(f"   ⚠️ 未生成任何QA对")
+                    print(f"   ⚠️ 未生成任何QA对", file=sys.stderr, flush=True)
                 
                 for qa_item in qa:
                     db_manager.add_dataset_item(
@@ -452,9 +453,12 @@ def parse(
                     total_items += 1
             except Exception as e:
                 error_files.append((file_path, str(e)))
-                click.echo(f"   ❌ 生成失败: {e}")
+                print(f"   ❌ 生成失败: {e}", file=sys.stderr, flush=True)
                 logger.error(f"生成QA失败: {e}")
                 continue
+        
+        # 每个文件处理完成后输出总结
+        print(f"\n✅ [{file_name}] 处理完成! 本文件生成 {sum(1 for _ in chunks)} 个文本块", file=sys.stderr, flush=True)
     
     click.echo("-" * 60)
     click.echo("📊 处理完成! 统计信息:")
