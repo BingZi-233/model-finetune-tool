@@ -223,33 +223,43 @@ class LLMClient:
         # 尝试多次生成，选择最好的结果
         best_result = []
         for attempt in range(3):  # 最多重试3次
+        # 尝试多次生成，选择最好的结果
+        best_result = []
+        total_chars = len(text)
+        for attempt in range(3):  # 最多重试3次
             try:
-                print(f"   🤖 调用LLM生成QA对...", file=sys.stderr, flush=True)
+                print(f"   📤 发送请求到LLM (文本 {total_chars} 字符, 尝试 {attempt + 1}/3)...", file=sys.stderr, flush=True)
                 
                 response = self.chat([
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ], json_mode=True)
                 
-                print(f"   📥 LLM响应 ({len(response)} 字符)，正在解析...", file=sys.stderr, flush=True)
+                response_chars = len(response)
+                print(f"   📥 收到LLM响应 ({response_chars} 字符)，正在解析JSON...", file=sys.stderr, flush=True)
                 
                 pairs = self._extract_json(response)
+                pairs_count = len(pairs)
                 
                 # 验证质量
                 if self._validate_qa_pairs(pairs, num_pairs):
                     best_result = pairs
+                    print(f"   ✅ 成功! 生成 {pairs_count} 个QA对 (尝试 {attempt + 1}/3)", file=sys.stderr, flush=True)
                     break
+                else:
+                    print(f"   ⚠️ QA对验证失败，数量不足 (尝试 {attempt + 1}/3)", file=sys.stderr, flush=True)
                     
             except JSONParseError as e:
-                print(f"   ⚠️ JSON解析失败 (尝试 {attempt + 1}/3): {e}", file=sys.stderr, flush=True)
+                print(f"   ❌ JSON解析失败 (尝试 {attempt + 1}/3): {e}", file=sys.stderr, flush=True)
             except Exception as e:
-                print(f"   ❌ 调用失败 (尝试 {attempt + 1}/3): {e}", file=sys.stderr, flush=True)
+                print(f"   ❌ 请求失败 (尝试 {attempt + 1}/3): {e}", file=sys.stderr, flush=True)
                 if attempt == 2:  # 最后一次尝试
                     raise QAGenerationError(f"生成QA对失败: {e}")
                 continue
         
         # 如果自动生成失败，返回基于规则的fallback
         if not best_result:
+            print(f"   ⚠️ 使用fallback规则生成QA对", file=sys.stderr, flush=True)
             logger.warning("使用fallback生成简单QA对")
             best_result = self._generate_simple_qa(text, num_pairs)
         
@@ -371,6 +381,8 @@ class LLMClient:
         """生成高质量摘要"""
         lang_prompt = "中文" if language == "zh" else "English"
         
+        print(f"   📤 正在生成摘要 (文本 {len(text)} 字符)...", file=sys.stderr, flush=True)
+        
         response = self.chat([
             {
                 "role": "system",
@@ -389,12 +401,17 @@ class LLMClient:
             }
         ], json_mode=True)
         
+        print(f"   📥 摘要生成完成 ({len(response)} 字符)", file=sys.stderr, flush=True)
+        
         # 提取JSON中的summary字段
         try:
             import json
             response_data = json.loads(response)
-            return response_data.get("summary", response).strip()
+            summary = response_data.get("summary", response).strip()
+            print(f"   ✅ 成功提取摘要", file=sys.stderr, flush=True)
+            return summary
         except json.JSONDecodeError:
+            print(f"   ⚠️ JSON解析失败，返回原始响应", file=sys.stderr, flush=True)
             return response.strip()
     
     def generate_conversation(
@@ -427,15 +444,22 @@ class LLMClient:
 
 请生成 {num_turns} 轮对话。**直接输出纯JSON数组，不要用```包裹**。"""
         
+        print(f"   📤 正在生成对话 ({num_turns} 轮, 文本 {len(text)} 字符)...", file=sys.stderr, flush=True)
+        
         response = self.chat([
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"基于以下内容生成对话：\n\n{text}"}
         ], json_mode=True)
         
+        print(f"   📥 对话生成完成 ({len(response)} 字符)，正在解析...", file=sys.stderr, flush=True)
+        
         try:
-            return self._extract_json(response)
+            conversation = self._extract_json(response)
+            print(f"   ✅ 成功生成 {len(conversation)} 轮对话", file=sys.stderr, flush=True)
+            return conversation
         except JSONParseError:
             # Fallback: 返回简单格式
+            print(f"   ⚠️ 对话解析失败，使用fallback", file=sys.stderr, flush=True)
             logger.warning("对话生成JSON解析失败，使用fallback")
             return [
                 {"role": "user", "content": "请介绍一下"},
