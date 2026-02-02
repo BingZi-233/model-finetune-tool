@@ -21,6 +21,13 @@ from .trainer import train_lora, merge_model, prepare_training_data
 
 logger = logging.getLogger(__name__)
 
+# 配置日志输出到 stderr
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(message)s',
+    stream=sys.stderr
+)
+
 # ============ 平台检测 ============
 IS_WINDOWS = platform.system() == "Windows"
 IS_MACOS = platform.system() == "Darwin"
