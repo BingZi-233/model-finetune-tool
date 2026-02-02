@@ -183,8 +183,11 @@ class LLMClient:
 
 请按照上述质量标准，生成 {num_pairs} 个高质量问答对。
 
+## 重要约束
+**不要**使用任何markdown格式（如```json、```等），直接输出纯JSON文本。
+
 ## 输出格式
-```json
+直接输出JSON数组，不要添加任何代码块标记：
 [
   {{
     "instruction": "清晰明确的问题",
@@ -192,12 +195,11 @@ class LLMClient:
     "output": "详细准确的答案"
   }}
 ]
-```
 
 确保：
 1. 问题覆盖文本的核心内容
 2. 答案详细且基于文本
-3. JSON格式正确无误
+3. **直接输出纯JSON，不要用```包裹**
 4. 不要添加任何解释性文字"""
         
         # 尝试多次生成，选择最好的结果
@@ -381,13 +383,16 @@ class LLMClient:
 4. {lang_prompt}输出
 5. JSON数组格式
 
+## 重要约束
+**不要**使用任何markdown格式（如```json、```等），直接输出纯JSON数组。
+
 对话格式：
 [
   {{"role": "user", "content": "用户问题"}},
   {{"role": "assistant", "content": "助手回答"}}
 ]
 
-请生成 {num_turns} 轮对话。"""
+请生成 {num_turns} 轮对话。**直接输出纯JSON数组，不要用```包裹**。"""
         
         response = self.chat([
             {"role": "system", "content": system_prompt},
