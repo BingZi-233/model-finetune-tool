@@ -333,13 +333,13 @@ def parse(
     try:
         input_dir = validate_path(input_dir)
     except ValueError as e:
-        print(f"❌ {e}", file=sys.stderr, flush=True)
+        print(f"[ERROR] {e}", file=sys.stderr, flush=True)
         return
 
     try:
         cfg = load_config(config_path)
     except Exception as e:
-        print(f"❌ 加载配置失败: {e}", file=sys.stderr, flush=True)
+        print(f"[ERROR] 加载配置失败: {e}", file=sys.stderr, flush=True)
         return
 
     if chunk_size:
@@ -361,7 +361,7 @@ def parse(
     try:
         documents = parser.parse_directory(input_dir, recursive)
     except Exception as e:
-        logger.error(f"❌ 解析文档失败: {e}")
+        logger.error(f"[ERROR] 解析文档失败: {e}")
         logger.error(f"解析文档失败: {e}", exc_info=True)
         return
 
@@ -370,7 +370,7 @@ def parse(
         return
 
     logger.info("-" * 60)
-    logger.info(f"✅ 扫描完成! 发现 {len(documents)} 个有效文档")
+    logger.info(f"[OK] 扫描完成! 发现 {len(documents)} 个有效文档")
 
     # 统计总段落数
     total_paragraphs = sum(len(paras) for paras in documents.values())
@@ -450,7 +450,7 @@ def parse(
                 # 输出生成结果
                 if qa:
                     logger.info(
-                        f"   ✅ 生成 {len(qa)} 个QA对 (总计: {total_items + len(qa)})"
+                        f"   [OK] 生成 {len(qa)} 个QA对 (总计: {total_items + len(qa)})"
                     )
                 else:
                     logger.warning(f"   ⚠️ 未生成任何QA对")
@@ -468,22 +468,22 @@ def parse(
                     total_items += 1
             except Exception as e:
                 error_files.append((file_path, str(e)))
-                logger.error(f"   ❌ 生成失败: {e}")
+                logger.error(f"   [ERROR] 生成失败: {e}")
                 logger.error(f"生成QA失败: {e}")
                 continue
 
         # 每个文件处理完成后输出总结
         logger.info(
-            f"\n✅ [{file_name}] 处理完成! 本文件生成 {sum(1 for _ in chunks)} 个文本块"
+            f"\n[OK] [{file_name}] 处理完成! 本文件生成 {sum(1 for _ in chunks)} 个文本块"
         )
 
     logger.info("-" * 60)
     logger.info("📊 处理完成! 统计信息:")
     logger.info("=" * 60)
-    logger.info(f"✅ 成功处理文档: {len(documents) - skipped_files - len(error_files)}")
+    logger.info(f"[OK] 成功处理文档: {len(documents) - skipped_files - len(error_files)}")
     logger.info(f"📌 跳过已处理文档: {skipped_files}")
     if error_files:
-        logger.error(f"❌ 处理失败文档: {len(error_files)}")
+        logger.error(f"[ERROR] 处理失败文档: {len(error_files)}")
     logger.info(f"📦 总文本块数: {total_chunks}")
     logger.info(f"🎯 生成QA对总数: {total_items}")
     logger.info(f"📁 数据集: {dataset_name}")
@@ -505,12 +505,12 @@ def export(dataset_name: str, output_format: str, output: Optional[str]):
 
     if output_format == "jsonl":
         count = db_manager.save_to_jsonl(dataset_name, output)
-        logger.info(f"✅ 导出 {count} 条数据到 {output}")
+        logger.info(f"[OK] 导出 {count} 条数据到 {output}")
     else:
         data = db_manager.export_dataset(dataset_name)
         with open(output, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
-        logger.info(f"✅ 导出 {len(data)} 条数据到 {output}")
+        logger.info(f"[OK] 导出 {len(data)} 条数据到 {output}")
 
 
 @cli.command()
@@ -569,7 +569,7 @@ def train(
         max_length=max_length,
     )
 
-    logger.info(f"✅ 训练完成！模型保存到: {output_dir}")
+    logger.info(f"[OK] 训练完成！模型保存到: {output_dir}")
 
 
 @cli.command()
@@ -581,13 +581,13 @@ def merge(dataset_name: str, base_model: str, output: Optional[str]):
     lora_path = f"./output/{dataset_name}/lora_model"
 
     if not Path(lora_path).exists():
-        logger.error(f"❌ LoRA模型不存在: {lora_path}")
+        logger.error(f"[ERROR] LoRA模型不存在: {lora_path}")
         return
 
     output_path = output or f"./output/{dataset_name}/merged"
 
     merge_model(base_model, lora_path, output_path)
-    logger.info(f"✅ 模型已合并到: {output_path}")
+    logger.info(f"[OK] 模型已合并到: {output_path}")
 
 
 @cli.command()
@@ -596,7 +596,7 @@ def clear(dataset_name: str):
     """清空数据集"""
     db_manager = DatasetManager()
     db_manager.clear_dataset(dataset_name)
-    logger.info(f"✅ 已清空数据集: {dataset_name}")
+    logger.info(f"[OK] 已清空数据集: {dataset_name}")
 
 
 def main():
