@@ -538,6 +538,16 @@ def train(
     max_length: Optional[int],
 ):
     """训练模型"""
+    # 验证参数
+    if epochs is not None and (epochs < 1 or epochs > 100):
+        raise click.BadParameter(f"epochs 必须在 1-100 之间", param_hint="--epochs")
+
+    if batch_size is not None and (batch_size < 1 or batch_size > 64):
+        raise click.BadParameter(f"batch_size 必须在 1-64 之间", param_hint="--batch-size")
+
+    if max_length is not None and (max_length < 128 or max_length > 8192):
+        raise click.BadParameter(f"max_length 必须在 128-8192 之间", param_hint="--max-length")
+
     cfg = get_config()
 
     model_name = model or cfg.training.model_name
