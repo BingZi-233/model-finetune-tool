@@ -307,7 +307,7 @@ class LLMClient:
                     break
                 else:
                     print(
-                        f"   ⚠️ QA对验证失败,数量不足 (尝试 {attempt + 1}/3)",
+                        f"   [WARN] QA对验证失败,数量不足 (尝试 {attempt + 1}/3)",
                         file=sys.stderr,
                         flush=True,
                     )
@@ -330,7 +330,7 @@ class LLMClient:
 
         # 如果自动生成失败,返回基于规则的fallback
         if not best_result:
-            print(f"   ⚠️ 使用fallback规则生成QA对", file=sys.stderr, flush=True)
+            print(f"   [WARN] 使用fallback规则生成QA对", file=sys.stderr, flush=True)
             logger.warning("使用fallback生成简单QA对")
             best_result = self._generate_simple_qa(text, num_pairs)
 
@@ -489,7 +489,7 @@ class LLMClient:
             print(f"    成功提取摘要", file=sys.stderr, flush=True)
             return summary
         except json.JSONDecodeError:
-            print(f"   ⚠️ JSON解析失败,返回原始响应", file=sys.stderr, flush=True)
+            print(f"   [WARN] JSON解析失败,返回原始响应", file=sys.stderr, flush=True)
             return response.strip()
 
     def generate_conversation(
@@ -556,7 +556,7 @@ class LLMClient:
             return conversation
         except JSONParseError:
             # Fallback: 返回简单格式
-            print(f"   ⚠️ 对话解析失败,使用fallback", file=sys.stderr, flush=True)
+            print(f"   [WARN] 对话解析失败,使用fallback", file=sys.stderr, flush=True)
             logger.warning("对话生成JSON解析失败,使用fallback")
             return [
                 {"role": "user", "content": "请介绍一下"},

@@ -41,7 +41,7 @@ def setup_signal_handlers():
 
     def signal_handler(signum, frame):
         logger.info(f"收到信号 {signum}，正在安全退出...")
-        logger.info("\n⚠️ 检测到中断信号，正在安全退出...")
+        logger.info("\n[WARN] 检测到中断信号，正在安全退出...")
         sys.exit(0)
 
     # 注册信号处理器
@@ -260,7 +260,7 @@ def cli(ctx, config, verbose, quiet):
 
     # 处理全局选项
     if verbose and quiet:
-        logger.info("⚠️ 不能同时使用 --verbose 和 --quiet")
+        logger.info("[WARN] 不能同时使用 --verbose 和 --quiet")
 
     if verbose:
         enable_verbose()
@@ -372,7 +372,7 @@ def parse(
         return
 
     if not documents:
-        logger.warning("⚠️ 没有找到可解析的文档")
+        logger.warning("[WARN] 没有找到可解析的文档")
         return
 
     logger.info("-" * 60)
@@ -397,7 +397,7 @@ def parse(
         try:
             validate_file_size(file_path)
         except ValueError as e:
-            logger.warning(f"⚠️ 跳过大文件: {e}")
+            logger.warning(f"[WARN] 跳过大文件: {e}")
             continue
 
         # 计算内容hash
@@ -437,7 +437,7 @@ def parse(
             try:
                 validate_text_length(chunk)
             except ValueError as e:
-                logger.warning(f"⚠️ 跳过过长文本块: {e}")
+                logger.warning(f"[WARN] 跳过过长文本块: {e}")
                 continue
 
             # 输出当前处理进度到 stderr
@@ -459,7 +459,7 @@ def parse(
                         f"   [OK] 生成 {len(qa)} 个QA对 (总计: {total_items + len(qa)})"
                     )
                 else:
-                    logger.warning(f"   ⚠️ 未生成任何QA对")
+                    logger.warning(f"   [WARN] 未生成任何QA对")
 
                 for qa_item in qa:
                     db_manager.add_dataset_item(

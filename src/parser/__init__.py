@@ -266,7 +266,7 @@ class ParserManager:
                     )
                 else:
                     print(
-                        f"   ⚠️ 文件无有效内容: {file_path.name}",
+                        f"   [WARN] 文件无有效内容: {file_path.name}",
                         file=sys.stderr,
                         flush=True,
                     )
