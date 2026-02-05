@@ -28,7 +28,7 @@ logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stderr)
 
 # ============ 平台检测 ============
 IS_WINDOWS = platform.system() == "Windows"
-IS_MACOS = platform.system() == "Darwin"
+# IS_MACOS = platform.system() == "Darwin"  # 已定义但未使用
 
 # ============ 全局状态 ============
 _cli_verbose = False
