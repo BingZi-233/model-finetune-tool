@@ -133,6 +133,22 @@ dmypy.json
 .DS_Store
 Thumbs.db
 
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Desktop.ini
+$RECYCLE.BIN/
+System Volume Information/
+Thumbs.db:encryptable
+*.lnk
+*.url
+*.local
+
 # Project specific
 data/*
 !data/.gitkeep
@@ -154,31 +170,3 @@ poetry.lock
 tmp/
 temp/
 *.tmp
-
-# macOS
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V
-
-100
-.Trashes# Windows
-Thumbs.db
-Thumbs.db:encryptable
-Desktop.ini
-$RECYCLE.BIN/
-System Volume Information/
-*.lnk
-*.url
-*.local
-
-# Project specific
-data/*
-!data/.gitkeep
-output/**
-checkpoints/**
-*.db
-*.log
-*.pth
-*.safetensors
-*.h5
