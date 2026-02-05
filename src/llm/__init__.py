@@ -85,6 +85,7 @@ class LLMClient:
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
         json_mode: bool = False,
+        max_retries: int = 3,
         **kwargs,
     ) -> str:
         """
@@ -97,7 +98,14 @@ class LLMClient:
             temperature: 温度参数
             max_tokens: 最大token数
             json_mode: 是否强制JSON格式响应
+            max_retries: 最大重试次数 (默认3)
             **kwargs: 其他参数
+
+        Returns:
+            模型生成的响应内容
+
+        Raises:
+            LLMError: 当所有重试都失败时
         """
         # 构建请求参数
         request_params = {
@@ -114,9 +122,33 @@ class LLMClient:
         if json_mode:
             request_params["response_format"] = {"type": "json_object"}
 
-        response = self.client.chat.completions.create(**request_params)
+        # 带重试的请求
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                response = self.client.chat.completions.create(**request_params)
+                return response.choices[0].message.content
+            except RateLimitError as e:
+                logger.warning(f"API 速率限制 (尝试 {attempt + 1}/{max_retries}): {e}")
+                last_error = e
+                if attempt < max_retries - 1:
+                    import time
+                    time.sleep(2 ** attempt)  # 指数退避
+            except APITimeoutError as e:
+                logger.warning(f"API 超时 (尝试 {attempt + 1}/{max_retries}): {e}")
+                last_error = e
+                if attempt < max_retries - 1:
+                    import time
+                    time.sleep(1)
+            except APIError as e:
+                logger.warning(f"API 错误 (尝试 {attempt + 1}/{max_retries}): {e}")
+                last_error = e
+                if attempt < max_retries - 1:
+                    import time
+                    time.sleep(1)
 
-        return response.choices[0].message.content
+        # 所有重试都失败
+        raise LLMError(f"LLM 调用失败 (已重试 {max_retries} 次): {last_error}")
 
     def generate_qa_pairs(
         self, text: str, num_pairs: int = 5, language: str = "zh"
