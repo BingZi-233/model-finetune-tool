@@ -252,3 +252,46 @@ key3: true
         assert result["key1"] == "value1"
         assert result["key2"] == 123
         assert result["key3"] is True
+
+
+class TestConfigEdgeCases:
+    """测试配置边界情况"""
+
+    def test_llm_config_temperature_edge(self):
+        """测试温度边界值"""
+        import pytest
+        from src.config import LLMConfig
+        
+        # 测试最小值
+        config = LLMConfig(api_key="test", temperature=0.0)
+        assert config.temperature == 0.0
+        
+        # 测试最大值
+        config = LLMConfig(api_key="test", temperature=2.0)
+        assert config.temperature == 2.0
+        
+        # 测试超出范围（应该使用默认值）
+        config = LLMConfig(api_key="test", temperature=-1.0)
+        assert config.temperature == 0.7
+        
+        config = LLMConfig(api_key="test", temperature=3.0)
+        assert config.temperature == 0.7
+
+    def test_database_config_port_edge(self):
+        """测试端口边界值"""
+        from src.config import DatabaseConfig
+        
+        # 测试最小值
+        config = DatabaseConfig(port=1)
+        assert config.port == 1
+        
+        # 测试最大值
+        config = DatabaseConfig(port=65535)
+        assert config.port == 65535
+        
+        # 测试超出范围
+        config = DatabaseConfig(port=0)
+        assert config.port == 3306
+        
+        config = DatabaseConfig(port=65536)
+        assert config.port == 3306
