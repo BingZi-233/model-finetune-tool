@@ -109,9 +109,22 @@ class DatasetManager:
                 pool_pre_ping=True
             )
         elif "mysql" in db_path:
-            self.engine = create_engine(db_path)
+            # MySQL 连接池配置
+            self.engine = create_engine(
+                db_path,
+                pool_size=5,
+                max_overflow=10,
+                pool_pre_ping=True,
+                pool_recycle=3600
+            )
         elif "postgresql" in db_path:
-            self.engine = create_engine(db_path)
+            # PostgreSQL 连接池配置
+            self.engine = create_engine(
+                db_path,
+                pool_size=5,
+                max_overflow=10,
+                pool_pre_ping=True
+            )
         else:
             raise ValueError(f"不支持的数据库路径: {db_path}")
         
