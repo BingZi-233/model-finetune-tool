@@ -23,13 +23,30 @@ def check_gpu_available() -> Dict[str, bool]:
         - cuda: CUDA 是否可用
         - mps: Apple Silicon 是否可用
         - gpu_name: GPU 名称 (如果检测到)
+        - cuda_version: CUDA 版本 (如果可用)
     """
-    result = {"cuda": False, "mps": False, "gpu_name": None}
+    result = {"cuda": False, "mps": False, "gpu_name": None, "cuda_version": None}
 
     try:
         import torch
 
         if torch.cuda.is_available():
+            cuda_version = torch.version.cuda
+            if cuda_version:
+                result["cuda_version"] = cuda_version
+                logger.info(f"CUDA 版本: {cuda_version}")
+
+                # 检查 CUDA 版本兼容性 (需要 11.0+)
+                try:
+                    major, minor = cuda_version.split(".")[:2]
+                    cuda_major = int(major)
+                    if cuda_major < 11:
+                        logger.warning(
+                            f"CUDA 版本 {cuda_version} 较旧，可能存在兼容性问题，建议升级到 11.0+"
+                        )
+                except (ValueError, AttributeError):
+                    pass
+
             result["cuda"] = True
             result["gpu_name"] = torch.cuda.get_device_name(0)
             logger.info(f"检测到 CUDA GPU: {result['gpu_name']}")
