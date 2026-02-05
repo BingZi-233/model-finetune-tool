@@ -335,7 +335,16 @@ class LLMClient:
         1. 清理markdown标记后解析
         2. 从代码块中提取
         3. 查找JSON数组
+
+        Returns:
+            解析后的 JSON 列表
+        Raises:
+            JSONParseError: 当所有解析方法都失败时
         """
+        # 记录原始响应长度用于调试
+        response_len = len(response)
+        logger.debug(f"开始解析 JSON，响应长度: {response_len} 字符")
+
         # 首先清理markdown代码块标记
         # 处理 ```json\n[ 和 ```json [ 等各种格式
         cleaned = response.strip()
@@ -344,9 +353,11 @@ class LLMClient:
 
         # 方式1: 解析清理后的内容
         try:
-            return json.loads(cleaned)
-        except json.JSONDecodeError:
-            pass
+            result = json.loads(cleaned)
+            logger.debug("方式1成功: 解析清理后的内容")
+            return result
+        except json.JSONDecodeError as e:
+            logger.debug(f"方式1失败: {e}")
 
         # 方式2: 从代码块中提取(更宽松的匹配)
         json_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", response)
@@ -356,30 +367,40 @@ class LLMClient:
                 # 清理可能的 ```json 残留
                 content = re.sub(r"^```(?:json)?\s*", "", content)
                 content = re.sub(r"\s*```\s*$", "", content)
-                return json.loads(content)
-            except json.JSONDecodeError:
-                pass
+                result = json.loads(content)
+                logger.debug("方式2成功: 从代码块中提取")
+                return result
+            except json.JSONDecodeError as e:
+                logger.debug(f"方式2失败: {e}")
 
         # 方式3: 查找JSON数组(支持不完整的代码块)
         # 匹配从 [ 开始到 ] 结束的内容
         array_match = re.search(r"(\[[\s\S]*?\])(?:\s*$|\s*\n?\s*```)", response)
         if array_match:
             try:
-                return json.loads(array_match.group(1))
-            except json.JSONDecodeError:
-                pass
+                result = json.loads(array_match.group(1))
+                logger.debug("方式3成功: 查找JSON数组")
+                return result
+            except json.JSONDecodeError as e:
+                logger.debug(f"方式3失败: {e}")
 
         # 方式4: 查找最后一个JSON数组(最常见的情况)
         all_arrays = re.findall(r"\[[\s\S]*?\]", response)
-        for arr_str in reversed(all_arrays):  # 从后往前找
+        for i, arr_str in enumerate(reversed(all_arrays)):  # 从后往前找
             try:
                 parsed = json.loads(arr_str)
                 if isinstance(parsed, list) and len(parsed) > 0:
+                    logger.debug(f"方式4成功: 第 {i+1} 个数组")
                     return parsed
             except json.JSONDecodeError:
                 continue
 
-        raise JSONParseError(f"无法解析LLM响应中的JSON:\n响应内容: {response[:500]}...")
+        # 所有方法都失败
+        logger.warning(f"JSON解析失败，已尝试4种方式，响应前200字符: {response[:200]}")
+        raise JSONParseError(
+            f"无法解析LLM响应中的JSON (响应长度: {response_len}):\n"
+            f"响应内容: {response[:500]}..."
+        )
 
     def _generate_simple_qa(self, text: str, num_pairs: int) -> List[Dict[str, str]]:
         """
