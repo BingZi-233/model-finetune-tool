@@ -360,9 +360,15 @@ def parse(
 
     try:
         documents = parser.parse_directory(input_dir, recursive)
+    except (OSError, IOError) as e:
+        logger.error(f"[ERROR] 读取文档目录失败: {e}")
+        return
+    except ValueError as e:
+        logger.error(f"[ERROR] 文档格式错误: {e}")
+        return
     except Exception as e:
         logger.error(f"[ERROR] 解析文档失败: {e}")
-        logger.error(f"解析文档失败: {e}", exc_info=True)
+        logger.debug(f"详细错误信息:", exc_info=True)
         return
 
     if not documents:
