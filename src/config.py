@@ -250,9 +250,22 @@ def load_config(config_path: str = "config.yaml") -> Config:
 
 # ============ 配置管理器（支持热重载） ============
 class ConfigManager:
-    """配置管理器，支持热重载和配置切换"""
+    """配置管理器，支持配置热重载和配置切换
+
+    特性:
+    - 自动检测配置文件变更
+    - 支持多配置文件切换
+    - 配置缓存和复用
+    - 线程安全 (单线程环境)
+
+    Attributes:
+        _config: 当前加载的配置对象
+        _config_path: 当前配置文件路径
+        _last_modified: 最后修改时间戳
+    """
 
     def __init__(self):
+        """初始化配置管理器"""
         self._config: Optional[Config] = None
         self._config_path: Optional[str] = None
         self._last_modified: Optional[float] = None
