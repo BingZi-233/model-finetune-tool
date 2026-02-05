@@ -8,6 +8,7 @@ import platform
 import re
 import signal
 import sys
+import tempfile
 from pathlib import Path
 from typing import List, Optional
 
@@ -544,13 +545,15 @@ def train(
     batch_size = batch_size or cfg.training.batch_size
     max_length = max_length or cfg.training.max_length
 
-    # 导出数据
-    data_path = f"/tmp/{dataset_name}_train.jsonl"
+    # 导出数据到临时文件
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False) as tmp:
+        data_path = tmp.name
     db_manager = DatasetManager()
     db_manager.save_to_jsonl(dataset_name, data_path)
 
     # 准备数据
-    prepared_path = f"/tmp/{dataset_name}_prepared.jsonl"
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False) as tmp:
+        prepared_path = tmp.name
     prepare_training_data(data_path, prepared_path)
 
     output_dir = f"./output/{dataset_name}"

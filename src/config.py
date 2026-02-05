@@ -90,9 +90,9 @@ class DatasetConfig(BaseModel):
             return 200
         if v >= chunk_size:
             logger.warning(
-                f"chunk_overlap ({v}) >= chunk_size ({chunk_size})，使用默认值 200"
+                f"chunk_overlap ({v}) >= chunk_size ({chunk_size})，使用 chunk_size//2 = {chunk_size // 2}"
             )
-            return min(200, chunk_size // 2)
+            return chunk_size // 2
         return v
 
 
@@ -245,7 +245,7 @@ def load_config(config_path: str = "config.yaml") -> Config:
         return config
     except Exception as e:
         logger.error(f"配置验证失败: {e}")
-        raise ValueError(f"配置无效: {e}")
+        raise ValueError(f"配置无效: {e}") from e
 
 
 # ============ 配置管理器（支持热重载） ============
