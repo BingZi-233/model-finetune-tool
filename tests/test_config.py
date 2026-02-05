@@ -220,3 +220,35 @@ git:
                 assert config.git.auto_commit is False
             finally:
                 os.unlink(f.name)
+
+
+class TestLoadYamlWithEnvEdgeCases:
+    """测试 YAML 加载边界情况"""
+
+    def test_empty_yaml(self):
+        """测试空 YAML 内容"""
+        yaml_content = ""
+        result = load_yaml_with_env(yaml_content)
+        assert result is None or result == {}
+
+    def test_yaml_with_special_chars(self):
+        """测试包含特殊字符的环境变量"""
+        os.environ["SPECIAL_CHARS"] = "value with spaces & symbols!@#"
+        yaml_content = """
+key: "${SPECIAL_CHARS}"
+"""
+        result = load_yaml_with_env(yaml_content)
+        assert result["key"] == "value with spaces & symbols!@#"
+        del os.environ["SPECIAL_CHARS"]
+
+    def test_yaml_without_env_vars(self):
+        """测试不包含环境变量的 YAML"""
+        yaml_content = """
+key1: value1
+key2: 123
+key3: true
+"""
+        result = load_yaml_with_env(yaml_content)
+        assert result["key1"] == "value1"
+        assert result["key2"] == 123
+        assert result["key3"] is True
