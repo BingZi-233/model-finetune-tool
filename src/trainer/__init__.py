@@ -4,7 +4,7 @@ import logging
 import os
 import platform
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 from ..config import get_config
 
@@ -15,7 +15,7 @@ IS_WINDOWS = platform.system() == "Windows"
 
 
 # ============ GPU 检测 ============
-def check_gpu_available() -> Dict[str, bool]:
+def check_gpu_available() -> Dict[str, Any]:
     """检查 GPU 可用性
 
     Returns:
@@ -261,8 +261,17 @@ def train_lora(
     return str(output_dir / "lora_model")
 
 
-def merge_model(base_model_path: str, lora_model_path: str, output_path: str):
-    """合并模型"""
+def merge_model(base_model_path: str, lora_model_path: str, output_path: str) -> str:
+    """合并模型
+
+    Args:
+        base_model_path: 基础模型路径
+        lora_model_path: LoRA 模型路径
+        output_path: 输出路径
+
+    Returns:
+        输出路径字符串
+    """
     from peft import PeftModel
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
